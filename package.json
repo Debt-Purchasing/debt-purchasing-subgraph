@@ -1,0 +1,34 @@
+{
+  "name": "debt-purchasing-subgraph",
+  "version": "1.0.0",
+  "description": "Subgraph for Debt Purchasing Protocol - tracks AaveRouter and Aave contract events",
+  "main": "index.js",
+  "scripts": {
+    "codegen": "graph codegen",
+    "build": "graph build",
+    "deploy": "graph deploy",
+    "deploy-local": "graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 debt-purchasing-subgraph",
+    "create-local": "graph create --node http://localhost:8020/ debt-purchasing-subgraph",
+    "remove-local": "graph remove --node http://localhost:8020/ debt-purchasing-subgraph",
+    "test": "graph test",
+    "prepare:sepolia": "mustache config/sepolia.json subgraph.template.yaml > subgraph.yaml",
+    "prepare:mainnet": "mustache config/mainnet.json subgraph.template.yaml > subgraph.yaml"
+  },
+  "dependencies": {
+    "@graphprotocol/graph-cli": "0.56.0",
+    "@graphprotocol/graph-ts": "0.30.0"
+  },
+  "devDependencies": {
+    "matchstick-as": "0.5.0",
+    "mustache": "^4.2.0"
+  },
+  "keywords": [
+    "subgraph",
+    "aave",
+    "debt",
+    "defi",
+    "ethereum"
+  ],
+  "author": "Debt Purchasing Protocol",
+  "license": "MIT"
+}

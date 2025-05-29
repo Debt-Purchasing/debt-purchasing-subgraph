@@ -1,0 +1,69 @@
+specVersion: 0.0.5
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum
+    name: AaveRouter
+    network: { { network } }
+    source:
+      address: "{{aaveRouterAddress}}"
+      abi: AaveRouter
+      startBlock: { { aaveRouterStartBlock } }
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - User
+        - DebtPosition
+        - Order
+        - OrderExecution
+        - Transaction
+        - ProtocolMetrics
+      abis:
+        - name: AaveRouter
+          file: ./abis/AaveRouter.json
+        - name: AaveDebt
+          file: ./abis/AaveDebt.json
+      eventHandlers:
+        - event: CreateDebt(indexed address,indexed address)
+          handler: handleCreateDebt
+        - event: TransferDebtOwnership(indexed address,indexed address)
+          handler: handleTransferDebtOwnership
+        - event: CancelCurrentDebtOrders(indexed address)
+          handler: handleCancelCurrentDebtOrders
+        - event: Supply(indexed address,indexed address,uint256)
+          handler: handleSupply
+        - event: Borrow(indexed address,indexed address,uint256,uint256)
+          handler: handleBorrow
+        - event: Withdraw(indexed address,indexed address,uint256,address)
+          handler: handleWithdraw
+        - event: Repay(indexed address,indexed address,uint256,uint256)
+          handler: handleRepay
+        - event: ExecuteFullSaleOrder(indexed address,uint256,address)
+          handler: handleExecuteFullSaleOrder
+        - event: ExecutePartialSellOrder(indexed address,uint256,address)
+          handler: handleExecutePartialSellOrder
+      file: ./src/aave-router.ts
+templates:
+  - kind: ethereum/contract
+    name: AaveDebt
+    network: { { network } }
+    source:
+      abi: AaveDebt
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - DebtPosition
+        - PositionCollateral
+        - PositionDebt
+        - TokenPrice
+      abis:
+        - name: AaveDebt
+          file: ./abis/AaveDebt.json
+        - name: AaveRouter
+          file: ./abis/AaveRouter.json
+      eventHandlers: []
+      file: ./src/aave-debt.ts

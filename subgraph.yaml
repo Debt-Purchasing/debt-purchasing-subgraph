@@ -1,0 +1,124 @@
+specVersion: 0.0.5
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum
+    name: AaveRouter
+    network: sepolia
+    source:
+      address: "0x0000000000000000000000000000000000000000" # Replace with actual deployed address
+      abi: AaveRouter
+      startBlock: 0 # Replace with deployment block
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - User
+        - DebtPosition
+        - Order
+        - OrderExecution
+        - Transaction
+        - ProtocolMetrics
+      abis:
+        - name: AaveRouter
+          file: ./abis/AaveRouter.json
+        - name: AaveDebt
+          file: ./abis/AaveDebt.json
+      eventHandlers:
+        - event: CreateDebt(indexed address,indexed address)
+          handler: handleCreateDebt
+        - event: TransferDebtOwnership(indexed address,indexed address)
+          handler: handleTransferDebtOwnership
+        - event: CancelCurrentDebtOrders(indexed address)
+          handler: handleCancelCurrentDebtOrders
+        - event: Supply(indexed address,indexed address,uint256)
+          handler: handleSupply
+        - event: Borrow(indexed address,indexed address,uint256,uint256)
+          handler: handleBorrow
+        - event: Withdraw(indexed address,indexed address,uint256,address)
+          handler: handleWithdraw
+        - event: Repay(indexed address,indexed address,uint256,uint256)
+          handler: handleRepay
+        - event: ExecuteFullSaleOrder(indexed address,uint256,address)
+          handler: handleExecuteFullSaleOrder
+        - event: ExecutePartialSellOrder(indexed address,uint256,address)
+          handler: handleExecutePartialSellOrder
+      file: ./src/aave-router.ts
+  # Add Aave Pool contract for price tracking
+  - kind: ethereum
+    name: AavePool
+    network: sepolia
+    source:
+      address: "0x6Ae43d3271ff6888e7Fc43Fd7321a503ff738951" # Aave V3 Pool Sepolia
+      abi: AavePool
+      startBlock: 4000000 # Aave deployment block on Sepolia
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - TokenPrice
+        - PriceSnapshot
+        - ProtocolMetrics
+      abis:
+        - name: AavePool
+          file: ./abis/AavePool.json
+        - name: AaveOracle
+          file: ./abis/AaveOracle.json
+      eventHandlers:
+        - event: Supply(indexed address,address,indexed address,uint256,indexed uint16)
+          handler: handleAaveSupply
+        - event: Borrow(indexed address,address,indexed address,uint256,uint256,uint256,indexed uint16)
+          handler: handleAaveBorrow
+        - event: Repay(indexed address,indexed address,indexed address,uint256,bool)
+          handler: handleAaveRepay
+        - event: Withdraw(indexed address,indexed address,indexed address,uint256)
+          handler: handleAaveWithdraw
+      file: ./src/aave-pool.ts
+  # Add Aave Oracle contract for price updates
+  - kind: ethereum
+    name: AaveOracle
+    network: sepolia
+    source:
+      address: "0x2da88497588bf89281816106C7259e31AF45a663" # Aave Oracle Sepolia (placeholder)
+      abi: AaveOracle
+      startBlock: 4000000 # Aave deployment block on Sepolia
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - TokenPrice
+        - PriceSnapshot
+      abis:
+        - name: AaveOracle
+          file: ./abis/AaveOracle.json
+      eventHandlers:
+        - event: AssetSourceUpdated(indexed address,indexed address)
+          handler: handleAssetSourceUpdated
+        - event: FallbackOracleUpdated(indexed address)
+          handler: handleFallbackOracleUpdated
+      file: ./src/aave-oracle.ts
+templates:
+  - kind: ethereum/contract
+    name: AaveDebt
+    network: sepolia
+    source:
+      abi: AaveDebt
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - DebtPosition
+        - PositionCollateral
+        - PositionDebt
+        - TokenPrice
+      abis:
+        - name: AaveDebt
+          file: ./abis/AaveDebt.json
+        - name: AaveRouter
+          file: ./abis/AaveRouter.json
+      eventHandlers: []
+      file: ./src/aave-debt.ts

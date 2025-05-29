@@ -1,0 +1,6 @@
+{
+  "network": "sepolia",
+  "aaveRouterAddress": "0x0000000000000000000000000000000000000000",
+  "aaveRouterStartBlock": 0,
+  "description": "Sepolia testnet configuration - update addresses and start blocks after deployment"
+}
