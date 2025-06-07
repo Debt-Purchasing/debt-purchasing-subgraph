@@ -1,197 +1,96 @@
-enum OrderType {
-  FULL_SALE
-  PARTIAL_SALE
-}
-
-enum OrderStatus {
-  ACTIVE
-  EXPIRED
-  EXECUTED
-  CANCELLED
-}
-
-enum RiskLevel {
-  LOW
-  MEDIUM
-  HIGH
-  CRITICAL
-}
-
-enum ExecutionStrategy {
-  FULL_CLEANUP
-  STRATEGIC
-  MINIMAL
-}
-
 type User @entity {
   id: ID! # User address
   totalPositions: BigInt! # Number of debt positions created
-  totalOrdersCreated: BigInt! # Orders created as seller
+  # totalOrdersCreated: BigInt! # Orders created as seller - Orders are off-chain
   totalOrdersExecuted: BigInt! # Orders executed as buyer
   totalVolumeTraded: BigDecimal! # Total volume in USD
   positions: [DebtPosition!]! @derivedFrom(field: "owner")
-  sellOrders: [Order!]! @derivedFrom(field: "seller")
-  buyExecutions: [OrderExecution!]! @derivedFrom(field: "buyer")
-  createdAt: BigInt!
-  lastActiveAt: BigInt!
+  # sellOrders: [Order!]! @derivedFrom(field: "seller") - Orders are off-chain
+  # Split execution tracking
+  fullSaleBuys: [FullSaleOrderExecution!]! @derivedFrom(field: "buyer")
+  fullSaleSells: [FullSaleOrderExecution!]! @derivedFrom(field: "seller")
+  partialOrderBuys: [PartialOrderExecution!]! @derivedFrom(field: "buyer")
+  partialOrderSells: [PartialOrderExecution!]! @derivedFrom(field: "seller")
 }
 
 type DebtPosition @entity {
   id: ID! # Debt contract address
   owner: User! # Current owner
   nonce: BigInt! # Current nonce
-  # Collateral tracking
+  # Collateral tracking (detailed breakdown)
   collaterals: [PositionCollateral!]! @derivedFrom(field: "position")
-  totalCollateralUSD: BigDecimal! # Pre-calculated total value
-  # Debt tracking
+  # Debt tracking (detailed breakdown)
   debts: [PositionDebt!]! @derivedFrom(field: "position")
-  totalDebtUSD: BigDecimal! # Pre-calculated total value
-  # Health metrics (updated real-time)
-  healthFactor: BigDecimal! # Current HF
-  liquidationThreshold: BigDecimal! # Weighted average LT
-  maxLTV: BigDecimal! # Maximum LTV
-  # Risk assessment
-  riskLevel: RiskLevel! # LOW, MEDIUM, HIGH, CRITICAL
-  timeToLiquidation: BigInt # Estimated time in seconds
-  # Performance tracking
-  netEquityUSD: BigDecimal! # Collateral - Debt
-  totalPnL: BigDecimal! # Lifetime P&L
-  # Order tracking
-  activeOrders: [Order!]! @derivedFrom(field: "position")
-  orderHistory: [OrderExecution!]! @derivedFrom(field: "position")
+  # Split execution history tracking
+  fullSaleExecutions: [FullSaleOrderExecution!]! @derivedFrom(field: "position")
+  partialExecutions: [PartialOrderExecution!]! @derivedFrom(field: "position")
 
   # Timestamps
-  createdAt: BigInt!
   lastUpdatedAt: BigInt!
-
-  # Historical snapshots
-  snapshots: [PositionSnapshot!]! @derivedFrom(field: "position")
 }
 
 type PositionCollateral @entity {
   id: ID! # position-token
   position: DebtPosition!
-  token: TokenPrice!
+  token: Token!
   amount: BigDecimal! # Amount of collateral
-  valueUSD: BigDecimal! # USD value
-  liquidationThreshold: BigDecimal! # LT for this asset
   lastUpdatedAt: BigInt!
 }
 
 type PositionDebt @entity {
   id: ID! # position-token-ratemode
   position: DebtPosition!
-  token: TokenPrice!
+  token: Token!
   amount: BigDecimal! # Amount of debt
-  valueUSD: BigDecimal! # USD value
   interestRateMode: BigInt! # 1 = stable, 2 = variable
   lastUpdatedAt: BigInt!
 }
 
-type Order @entity {
-  id: ID! # Order hash
-  type: OrderType! # FULL_SALE, PARTIAL_SALE
-  position: DebtPosition! # Associated position
-  seller: User! # Order creator
-  # Order details
-  triggerHF: BigDecimal! # Health Factor trigger
-  startTime: BigInt! # Order start time
-  endTime: BigInt! # Order expiry
-  # Full sale specific
-  paymentToken: Bytes # Token for premium payment
-  percentOfEquity: BigInt # Percentage of equity to seller
-  # Partial sale specific
-  repayToken: Bytes # Token for debt repayment
-  repayAmount: BigDecimal # Amount to repay
-  collateralTokens: [Bytes!] # Collateral tokens to withdraw
-  collateralPercents: [BigInt!] # Allocation percentages
-  bonus: BigInt # Buyer bonus percentage
-  interestRateMode: BigInt # Interest rate mode for repayment
-  # Calculated values (updated real-time)
-  estimatedPremium: BigDecimal # Expected premium in USD
-  estimatedProfit: BigDecimal # Expected buyer profit
-  profitMargin: BigDecimal # Profit as percentage
-  # Status tracking
-  status: OrderStatus! # ACTIVE, EXPIRED, EXECUTED, CANCELLED
-  canExecute: Boolean! # Real-time executability
-  # Execution tracking
-  execution: OrderExecution # Execution details if executed
-  # Timestamps
-  createdAt: BigInt!
-  lastUpdatedAt: BigInt!
-}
+# Order entity removed - orders are created off-chain with signatures
 
-type OrderExecution @entity {
+type FullSaleOrderExecution @entity {
   id: ID! # Transaction hash
-  order: Order! # Original order
   position: DebtPosition! # Position involved
-  buyer: User! # Order executor
-  # Execution details
-  executionPrice: BigDecimal! # Actual execution price
-  actualProfit: BigDecimal! # Actual buyer profit
-  premiumPaid: BigDecimal! # Premium paid to seller
+  buyer: User! # Order executor (new owner)
+  seller: User! # Previous owner
+  debtNonce: BigInt! # Debt nonce from event
   gasUsed: BigInt! # Gas consumed
   gasPriceGwei: BigDecimal! # Gas price in Gwei
-  # Post-execution actions
-  debtsRepaid: [DebtRepayment!]! @derivedFrom(field: "execution")
-  collateralsWithdrawn: [CollateralWithdrawal!]!
-    @derivedFrom(field: "execution")
-
   # Performance metrics
   executionTime: BigInt! # Block timestamp
   blockNumber: BigInt! # Block number
-  # Strategy used
-  strategy: ExecutionStrategy! # FULL_CLEANUP, STRATEGIC, MINIMAL
 }
 
-type DebtRepayment @entity {
-  id: ID! # execution-token
-  execution: OrderExecution!
-  token: TokenPrice!
-  amount: BigDecimal!
-  valueUSD: BigDecimal!
-  interestRateMode: BigInt!
+type PartialOrderExecution @entity {
+  id: ID! # Transaction hash
+  position: DebtPosition! # Position involved
+  buyer: User! # Order executor
+  seller: User! # Position owner (unchanged)
+  debtNonce: BigInt! # Debt nonce from event
+  gasUsed: BigInt! # Gas consumed
+  gasPriceGwei: BigDecimal! # Gas price in Gwei
+  # Performance metrics
+  executionTime: BigInt! # Block timestamp
+  blockNumber: BigInt! # Block number
 }
 
-type CollateralWithdrawal @entity {
-  id: ID! # execution-token
-  execution: OrderExecution!
-  token: TokenPrice!
-  amount: BigDecimal!
-  valueUSD: BigDecimal!
-  recipient: Bytes!
-}
-
-type TokenPrice @entity {
+# Consolidated Token entity combining TokenPrice and Token functionality
+type Token @entity {
   id: ID! # Token address
   symbol: String! # Token symbol
   decimals: Int! # Token decimals
   priceUSD: BigDecimal! # Current price in USD
-  lastUpdatedAt: BigInt! # Last price update
+  lastUpdatedAt: BigInt! # Last update timestamp
   # Oracle tracking
   oracleSource: String! # Oracle contract address providing the price
-  # Aave specific data
-  liquidationThreshold: BigDecimal! # LT from Aave
-  ltv: BigDecimal! # LTV from Aave
   # Historical tracking
   priceHistory: [PriceSnapshot!]! @derivedFrom(field: "token")
 }
 
 type PriceSnapshot @entity {
   id: ID! # token-timestamp
-  token: TokenPrice! # Token reference
+  token: Token! # Token reference
   priceUSD: BigDecimal! # Price at snapshot
-  timestamp: BigInt! # Snapshot time
-  blockNumber: BigInt! # Block number
-}
-
-type PositionSnapshot @entity {
-  id: ID! # position-timestamp
-  position: DebtPosition! # Position reference
-  healthFactor: BigDecimal! # HF at snapshot
-  totalCollateralUSD: BigDecimal! # Collateral value
-  totalDebtUSD: BigDecimal! # Debt value
-  netEquityUSD: BigDecimal! # Net equity
   timestamp: BigInt! # Snapshot time
   blockNumber: BigInt! # Block number
 }
@@ -211,8 +110,89 @@ type Transaction @entity {
 type ProtocolMetrics @entity {
   id: ID! # "protocol"
   totalPositions: BigInt!
-  totalActiveOrders: BigInt!
+  # totalActiveOrders: BigInt! - Orders are off-chain
   totalVolumeUSD: BigDecimal!
   totalUsers: BigInt!
   lastUpdatedAt: BigInt!
+}
+
+# Asset to Oracle mapping for dynamic price tracking
+type AssetOracleMapping @entity {
+  id: ID! # Asset address
+  asset: Bytes! # Token/asset address
+  oracle: Bytes! # Chainlink oracle address providing price
+  isActive: Boolean! # Whether mapping is currently active
+  createdAt: BigInt! # When mapping was first set
+  lastUpdatedAt: BigInt! # Last time mapping was updated
+}
+
+# Oracle to Asset reverse mapping for efficient lookup
+type OracleAssetMapping @entity {
+  id: ID! # Oracle address
+  oracle: Bytes! # Chainlink oracle address
+  asset: Bytes! # Token/asset address being priced
+  isActive: Boolean! # Whether mapping is currently active
+  createdAt: BigInt! # When mapping was first set
+  lastUpdatedAt: BigInt! # Last time mapping was updated
+}
+
+# Dynamic Asset Configuration from Aave Events
+type AssetConfiguration @entity {
+  id: ID! # Asset address
+  asset: Bytes! # Token/asset address
+  symbol: String! # Token symbol for easy reference
+  # Core configuration from ReserveInitialized
+  aToken: Bytes # aToken contract address
+  stableDebtToken: Bytes # Stable debt token address
+  variableDebtToken: Bytes # Variable debt token address
+  interestRateStrategy: Bytes # Interest rate strategy address
+  # Risk parameters from CollateralConfigurationChanged
+  ltv: BigDecimal! # Loan to value ratio (0-1 scale)
+  liquidationThreshold: BigDecimal! # Liquidation threshold (0-1 scale)
+  liquidationBonus: BigDecimal! # Liquidation bonus (>1 scale, e.g. 1.05 = 5% bonus)
+  # Reserve state flags
+  borrowingEnabled: Boolean! # Can be borrowed
+  stableRateBorrowingEnabled: Boolean! # Stable rate borrowing enabled
+  flashLoanEnabled: Boolean! # Flash loans enabled
+  isActive: Boolean! # Reserve is active
+  isFrozen: Boolean! # Reserve is frozen
+  isPaused: Boolean! # Reserve is paused
+  borrowableInIsolation: Boolean! # Can be borrowed in isolation mode
+  # Caps and limits
+  borrowCap: BigInt! # Maximum borrowable amount
+  supplyCap: BigInt! # Maximum suppliable amount
+  debtCeiling: BigInt! # Debt ceiling for isolation mode
+  # Fees
+  reserveFactor: BigInt! # Reserve factor in bps (0-10000)
+  liquidationProtocolFee: BigInt! # Liquidation protocol fee in bps
+  unbackedMintCap: BigInt! # Unbacked mint cap
+  # eMode configuration
+  eModeCategory: Int! # Efficiency mode category (0 = not in eMode)
+  # Timestamps
+  initializedAt: BigInt! # When reserve was first initialized
+  lastUpdatedAt: BigInt! # Last configuration update
+}
+
+# Historical tracking of configuration changes
+type AssetConfigurationHistory @entity {
+  id: ID! # asset-block-logIndex
+  asset: Bytes! # Asset address
+  eventType: String! # Type of event (CollateralConfigurationChanged, ReserveBorrowing, etc.)
+  # Changed values (null if not changed in this event)
+  ltv: BigDecimal
+  liquidationThreshold: BigDecimal
+  liquidationBonus: BigDecimal
+  borrowingEnabled: Boolean
+  stableRateBorrowingEnabled: Boolean
+  flashLoanEnabled: Boolean
+  isActive: Boolean
+  isFrozen: Boolean
+  isPaused: Boolean
+  borrowCap: BigInt
+  supplyCap: BigInt
+  reserveFactor: BigInt
+  # Event metadata
+  blockNumber: BigInt!
+  timestamp: BigInt!
+  transactionHash: Bytes!
 }

@@ -6,23 +6,27 @@ dataSources:
     name: AaveRouter
     network: sepolia
     source:
-      address: "0x69e47e4b7b08d68d8eedb09d481b8b60c8ab78dc" # Updated AaveRouter Sepolia
+      address: "0xd11775250D1B521fB7F245D43efdDcdE955F3AF8" # AaveRouter deployed address
       abi: AaveRouter
-      startBlock: 8453720 # Aave deployment block on Sepolia
+      startBlock: 8453720 # Deployment block (approximate)
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
       language: wasm/assemblyscript
       entities:
-        - DebtPosition
         - User
+        - DebtPosition
+        - Order
+        - OrderExecution
         - Transaction
         - ProtocolMetrics
-        - FullSaleOrderExecution
-        - PartialOrderExecution
       abis:
         - name: AaveRouter
           file: ./abis/AaveRouter.json
+        - name: AaveDebt
+          file: ./abis/AaveDebt.json
+        - name: AavePool
+          file: ./abis/AavePool.json
         - name: AaveOracle
           file: ./abis/AaveOracle.json
       eventHandlers:
@@ -32,6 +36,14 @@ dataSources:
           handler: handleTransferDebtOwnership
         - event: CancelCurrentDebtOrders(indexed address)
           handler: handleCancelCurrentDebtOrders
+        - event: Supply(indexed address,indexed address,uint256)
+          handler: handleSupply
+        - event: Borrow(indexed address,indexed address,uint256,uint256)
+          handler: handleBorrow
+        - event: Withdraw(indexed address,indexed address,uint256,address)
+          handler: handleWithdraw
+        - event: Repay(indexed address,indexed address,uint256,uint256)
+          handler: handleRepay
         - event: ExecuteFullSaleOrder(indexed address,uint256,address)
           handler: handleExecuteFullSaleOrder
         - event: ExecutePartialSellOrder(indexed address,uint256,address)
@@ -93,8 +105,8 @@ dataSources:
       eventHandlers:
         - event: AssetSourceUpdated(indexed address,indexed address)
           handler: handleAssetSourceUpdated
-        # - event: FallbackOracleUpdated(indexed address)
-        #   handler: handleFallbackOracleUpdated
+        - event: FallbackOracleUpdated(indexed address)
+          handler: handleFallbackOracleUpdated
       file: ./src/aave-oracle.ts
   # Aave Pool Configurator for asset configuration events
   - kind: ethereum
@@ -414,6 +426,32 @@ dataSources:
           handler: handlePriceUpdated
       file: ./src/chainlink-oracle.ts
 templates:
+  - kind: ethereum/contract
+    name: AaveDebt
+    network: sepolia
+    source:
+      abi: AaveDebt
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - DebtPosition
+        - PositionCollateral
+        - PositionDebt
+        - Order
+        - TokenPrice
+      abis:
+        - name: AaveDebt
+          file: ./abis/AaveDebt.json
+        - name: AaveRouter
+          file: ./abis/AaveRouter.json
+        - name: AavePool
+          file: ./abis/AavePool.json
+        - name: AaveOracle
+          file: ./abis/AaveOracle.json
+      eventHandlers: []
+      file: ./src/aave-debt.ts
   # Template for individual oracle tracking
   - kind: ethereum/contract
     name: ChainlinkOracleTemplate

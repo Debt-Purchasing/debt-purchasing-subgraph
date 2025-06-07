@@ -1,6 +1,38 @@
 {
   "network": "sepolia",
-  "aaveRouterAddress": "0x0000000000000000000000000000000000000000",
+  "aaveRouterAddress": "0xd11775250D1B521fB7F245D43efdDcdE955F3AF8",
+  "aavePoolAddress": "0x455b7372e78978ea903437ca0f6d832438f633c",
+  "aaveOracleAddress": "0xad0e73a1df939550038cefeccd728b18bc5683b7",
+  "oracleManagerAddress": "0x1e9ce0b93421d8ab9a1684b50bbbabe5c9863bb1",
+  "startBlock": 8453720,
+  "oracles": {
+    "WETH": "0x4d5f545400937997a594eb9f5b052381430e38d5",
+    "wstETH": "0xff7997e167b9d8709fe2a764672c075be1d734ec",
+    "WBTC": "0xcf3bc3dae51092f2a0bc3ca119bc761e73166cda",
+    "USDC": "0x7d4b1defb01610bcc0f7088649ed53bb7bfd9aa2",
+    "DAI": "0x6b02ded5e53730a3d046831068df843634fc3be3",
+    "LINK": "0xbf3575382f32c37b268113b1f4b30a9bc8e9cbec",
+    "AAVE": "0xfadcad80259cb08eb9db330b4e9b28d17fc97960",
+    "cbETH": "0xcd6cda9fdf5170c94ad8a8faad4c9955f523a020",
+    "USDT": "0xcf09ddcb2328446983058f41fdf75be8cc656e5d",
+    "rETH": "0x1fb2ad8b17996a4b8a87e1d8d599c95c6b9b918a",
+    "LUSD": "0xd5a1668be77ce93c5bd82e2f82dad5b529cb2c13",
+    "CRV": "0x251936fc84a0e1e585c3cbe74234a987c3c3c18e"
+  },
+  "tokens": {
+    "WETH": "0xd6c774778564ec1973b24a15ee4a5d00742e6575",
+    "wstETH": "0xb8057e942399f3714d40c0be7f4391ee447f42c9",
+    "WBTC": "0x1b8ea7c3b44465be550ebaef50ff6bc5f25ee50c",
+    "USDC": "0x005104eb2fd93a0c8f26e18934289ab91596e6bf",
+    "DAI": "0xe0f11265b326df8f5c3e1db6aa8dcd506fd4cc5b",
+    "LINK": "0x2aa4fc36242b9e4e169542305d16dff2cc0ecdae",
+    "AAVE": "0xbf088f3702000ebd6728b647a511ff0ae6867fc6",
+    "cbETH": "0x9204befc95e67e6c8b5f58e09659cc4658af8730",
+    "USDT": "0xd9126e24fc2e1bb395cca8b03c5e2aefabac35ea",
+    "rETH": "0x5e0e0d4a40b5d20b51b3f591485b00513c68b519",
+    "LUSD": "0xae1107d669f519fcb8ec58304a8cce04cbcb0349",
+    "CRV": "0x28614b7a40ca9e9c6bf0ca66f4f841594d3223b9"
+  },
   "aaveRouterStartBlock": 0,
   "description": "Sepolia testnet configuration - update addresses and start blocks after deployment"
 }
