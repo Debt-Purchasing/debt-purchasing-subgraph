@@ -38,23 +38,23 @@ export function handleAaveSupply(event: AaveSupplyEvent): void {
     }
 
     // Update amount (add supply)
-    let amountDecimal = event.params.amount.toBigDecimal().div(
-      BigDecimal.fromString(
-        BigInt.fromString("10")
-          .pow(getOrCreateToken(event.params.reserve).decimals as u8)
-          .toString()
-      )
-    );
+    let token = getOrCreateToken(event.params.reserve);
+    let decimals = token.decimals;
+    let divisor = BigDecimal.fromString("1");
+    for (let i = 0; i < decimals; i++) {
+      divisor = divisor.times(BigDecimal.fromString("10"));
+    }
+    let amountDecimal = event.params.amount.toBigDecimal().div(divisor);
     collateral.amount = collateral.amount.plus(amountDecimal);
     collateral.lastUpdatedAt = event.block.timestamp;
     collateral.save();
 
     // Log supply details
     let tokenSymbol = getTokenSymbol(event.params.reserve);
-    getTokenPriceUSD(event.params.reserve);
+    let usdValue = calculateUSDValue(event.params.reserve, amountDecimal);
     log.info(
       "Supply processed: {} {} (${}) added as collateral to position {}",
-      [amountDecimal.toString(), tokenSymbol, position.id]
+      [amountDecimal.toString(), tokenSymbol, usdValue.toString(), position.id]
     );
   }
 
@@ -68,9 +68,15 @@ export function handleAaveBorrow(event: AaveBorrowEvent): void {
     event.params.amount.toString(),
   ]);
 
+  log.info("Borrow event onBehalfOf: {}", [
+    event.params.onBehalfOf.toHexString(),
+  ]);
+
   // Check if this is one of our debt positions
   let position = DebtPosition.load(event.params.onBehalfOf.toHexString());
+  log.info("Position lookup result: {}", [position == null ? "null" : "found"]);
   if (position != null) {
+    log.info("Found debt position: {}", [position.id]);
     // Update debt for this position
     let debtId =
       position.id +
@@ -84,30 +90,39 @@ export function handleAaveBorrow(event: AaveBorrowEvent): void {
       debt.position = position.id;
       debt.token = event.params.reserve.toHexString();
       debt.amount = BigDecimal.fromString("0");
-      debt.interestRateMode = event.params.interestRateMode;
+      debt.interestRateMode = BigInt.fromI32(event.params.interestRateMode);
     }
 
     // Update amount (add borrow)
-    let amountDecimal = event.params.amount.toBigDecimal().div(
-      BigDecimal.fromString(
-        BigInt.fromString("10")
-          .pow(getOrCreateToken(event.params.reserve).decimals as u8)
-          .toString()
-      )
-    );
+    let token = getOrCreateToken(event.params.reserve);
+    let decimals = token.decimals;
+    let divisor = BigDecimal.fromString("1");
+    for (let i = 0; i < decimals; i++) {
+      divisor = divisor.times(BigDecimal.fromString("10"));
+    }
+    let amountDecimal = event.params.amount.toBigDecimal().div(divisor);
     debt.amount = debt.amount.plus(amountDecimal);
     debt.lastUpdatedAt = event.block.timestamp;
     debt.save();
 
     // Log borrow details
     let tokenSymbol = getTokenSymbol(event.params.reserve);
-    let rateMode = event.params.interestRateMode.equals(BigInt.fromI32(1))
-      ? "stable"
-      : "variable";
+    let usdValue = calculateUSDValue(event.params.reserve, amountDecimal);
+    let rateMode = event.params.interestRateMode == 1 ? "stable" : "variable";
     log.info(
       "Borrow processed: {} {} (${}) added as {} rate debt to position {}",
-      [amountDecimal.toString(), tokenSymbol, rateMode, position.id]
+      [
+        amountDecimal.toString(),
+        tokenSymbol,
+        usdValue.toString(),
+        rateMode,
+        position.id,
+      ]
     );
+  } else {
+    log.warning("No debt position found for onBehalfOf: {}", [
+      event.params.onBehalfOf.toHexString(),
+    ]);
   }
 
   // updateProtocolMetrics(event.block.timestamp);
@@ -125,9 +140,13 @@ export function handleAaveRepay(event: AaveRepayEvent): void {
   if (position != null) {
     // Find and update debt for this position
     // Note: We need to check both stable and variable rate modes
-    let amountDecimal = event.params.amount.toBigDecimal().div(
-      BigDecimal.fromString("1000000000000000000") // 18 decimals
-    );
+    let token = getOrCreateToken(event.params.reserve);
+    let decimals = token.decimals;
+    let divisor = BigDecimal.fromString("1");
+    for (let i = 0; i < decimals; i++) {
+      divisor = divisor.times(BigDecimal.fromString("10"));
+    }
+    let amountDecimal = event.params.amount.toBigDecimal().div(divisor);
     let totalRepaidUSD = BigDecimal.fromString("0");
 
     for (let rateMode = 1; rateMode <= 2; rateMode++) {
@@ -195,9 +214,13 @@ export function handleAaveWithdraw(event: AaveWithdrawEvent): void {
     let collateralId = position.id + "-" + event.params.reserve.toHexString();
     let collateral = PositionCollateral.load(collateralId);
     if (collateral != null) {
-      let amountDecimal = event.params.amount.toBigDecimal().div(
-        BigDecimal.fromString("1000000000000000000") // 18 decimals
-      );
+      let token = getOrCreateToken(event.params.reserve);
+      let decimals = token.decimals;
+      let divisor = BigDecimal.fromString("1");
+      for (let i = 0; i < decimals; i++) {
+        divisor = divisor.times(BigDecimal.fromString("10"));
+      }
+      let amountDecimal = event.params.amount.toBigDecimal().div(divisor);
       let withdrawnUSD = calculateUSDValue(event.params.reserve, amountDecimal);
 
       collateral.amount = collateral.amount.minus(amountDecimal);
