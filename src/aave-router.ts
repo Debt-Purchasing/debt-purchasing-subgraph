@@ -75,6 +75,7 @@ export function handleCreateDebt(event: CreateDebt): void {
   let position = new DebtPosition(event.params.debt.toHexString());
   position.owner = user.id;
   position.nonce = ZERO_BI;
+  position.createdAt = event.block.timestamp;
   position.lastUpdatedAt = event.block.timestamp;
   position.save();
 

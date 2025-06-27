@@ -26,6 +26,7 @@ type DebtPosition @entity {
   partialExecutions: [PartialOrderExecution!]! @derivedFrom(field: "position")
 
   # Timestamps
+  createdAt: BigInt!
   lastUpdatedAt: BigInt!
 }
 
