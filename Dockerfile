@@ -1,5 +1,6 @@
 FROM ubuntu:22.04
 
+# ENV
 ENV DEBIAN_FRONTEND=noninteractive
 ENV POSTGRES_USER=postgres
 ENV POSTGRES_PASSWORD=password
@@ -12,19 +13,16 @@ RUN apt-get update && apt-get install -y \
   ca-certificates \
   libssl-dev pkg-config build-essential \
   git cmake protobuf-compiler libpq-dev \
-  supervisor sudo \
+  supervisor \
   && rm -rf /var/lib/apt/lists/*
 
-# Install Rust and Graph Node
-RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
-ENV PATH="/root/.cargo/bin:${PATH}"
-RUN cargo install --git https://github.com/graphprotocol/graph-node graph-node
+# Install Graph Node binary release (v0.36.0)
+RUN wget https://github.com/graphprotocol/graph-node/releases/download/v0.36.0/graph-node-v0.36.0-x86_64-unknown-linux-gnu.tar.gz \
+ && tar -xzf graph-node-v0.36.0-x86_64-unknown-linux-gnu.tar.gz \
+ && mv graph-node /usr/local/bin/graph-node \
+ && chmod +x /usr/local/bin/graph-node
 
-# Create dirs
-RUN mkdir -p /var/log/supervisor /var/lib/postgresql/data
-RUN chown -R postgres:postgres /var/lib/postgresql
-
-# Init Postgres DB properly
+# Init Postgres DB (manual init because we don’t use systemd)
 RUN su postgres -c '/usr/lib/postgresql/14/bin/initdb -D /var/lib/postgresql/data'
 
 # Copy supervisord config
@@ -32,8 +30,5 @@ COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 EXPOSE 8000 8001 8002 5432
 
-CMD service postgresql start && \
-    sleep 3 && \
-    sudo -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname = 'graph'" | grep -q 1 || \
-    sudo -u postgres createdb graph && \
-    /usr/bin/supervisord -n
+# Show logs & run
+CMD tail -f /var/log/supervisor/*.log & /usr/bin/supervisord -n
