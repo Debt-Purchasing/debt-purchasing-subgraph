@@ -11,15 +11,15 @@ RUN apt-get update && apt-get install -y \
   supervisor \
   && rm -rf /var/lib/apt/lists/*
 
-# Tải và cài graph-node v0.39.1
+# Download graph-node v0.38.0 binary
 RUN wget -qO graph-node.tar.gz \
-     https://github.com/graphprotocol/graph-node/releases/download/v0.39.1/graph-node-v0.39.1-x86_64-unknown-linux-musl.tar.gz \
+     https://github.com/graphprotocol/graph-node/releases/download/v0.38.0/graph-node-v0.38.0-x86_64-unknown-linux-musl.tar.gz \
   && tar -xzf graph-node.tar.gz \
-  && mv graph-node-v0.39.1-x86_64-unknown-linux-musl/graph-node /usr/local/bin/graph-node \
+  && mv graph-node-v0.38.0-x86_64-unknown-linux-musl/graph-node /usr/local/bin/graph-node \
   && chmod +x /usr/local/bin/graph-node \
-  && rm -rf graph-node.tar.gz graph-node-v0.39.1-*
+  && rm -rf graph-node.tar.gz graph-node-v0.38.0-*
 
-# Init Postgres DB
+# Init Postgres
 RUN mkdir -p /var/lib/postgresql/data && chown -R postgres:postgres /var/lib/postgresql/data \
  && su postgres -c '/usr/lib/postgresql/14/bin/initdb -D /var/lib/postgresql/data'
 
