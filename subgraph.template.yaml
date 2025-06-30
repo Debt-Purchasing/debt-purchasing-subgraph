@@ -6,25 +6,25 @@ dataSources:
     name: AaveRouter
     network: { { network } }
     source:
-      address: "{{aaveRouterAddress}}"
+      address: "{{AaveRouter.address}}"
       abi: AaveRouter
-      startBlock: { { aaveRouterStartBlock } }
+      startBlock: { { AaveRouter.startBlock } }
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
       language: wasm/assemblyscript
       entities:
-        - User
         - DebtPosition
-        - Order
-        - OrderExecution
+        - User
         - Transaction
         - ProtocolMetrics
+        - FullSaleOrderExecution
+        - PartialOrderExecution
       abis:
         - name: AaveRouter
           file: ./abis/AaveRouter.json
-        - name: AaveDebt
-          file: ./abis/AaveDebt.json
+        - name: AaveOracle
+          file: ./abis/AaveOracle.json
       eventHandlers:
         - event: CreateDebt(indexed address,indexed address)
           handler: handleCreateDebt
@@ -32,25 +32,19 @@ dataSources:
           handler: handleTransferDebtOwnership
         - event: CancelCurrentDebtOrders(indexed address)
           handler: handleCancelCurrentDebtOrders
-        - event: Supply(indexed address,indexed address,uint256)
-          handler: handleSupply
-        - event: Borrow(indexed address,indexed address,uint256,uint256)
-          handler: handleBorrow
-        - event: Withdraw(indexed address,indexed address,uint256,address)
-          handler: handleWithdraw
-        - event: Repay(indexed address,indexed address,uint256,uint256)
-          handler: handleRepay
         - event: ExecuteFullSaleOrder(indexed address,uint256,address)
           handler: handleExecuteFullSaleOrder
         - event: ExecutePartialSellOrder(indexed address,uint256,address)
           handler: handleExecutePartialSellOrder
       file: ./src/aave-router.ts
-templates:
-  - kind: ethereum/contract
-    name: AaveDebt
+  # Aave Pool contract for lending events
+  - kind: ethereum
+    name: AavePool
     network: { { network } }
     source:
-      abi: AaveDebt
+      address: "{{AavePool.address}}"
+      abi: AavePool
+      startBlock: { { AavePool.startBlock } }
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -60,10 +54,162 @@ templates:
         - PositionCollateral
         - PositionDebt
         - TokenPrice
+        - ProtocolMetrics
       abis:
+        - name: AavePool
+          file: ./abis/AavePool.json
+        - name: AaveOracle
+          file: ./abis/AaveOracle.json
         - name: AaveDebt
           file: ./abis/AaveDebt.json
-        - name: AaveRouter
-          file: ./abis/AaveRouter.json
-      eventHandlers: []
-      file: ./src/aave-debt.ts
+      eventHandlers:
+        - event: Supply(indexed address,address,indexed address,uint256,indexed uint16)
+          handler: handleAaveSupply
+        - event: Borrow(indexed address,address,indexed address,uint256,uint8,uint256,indexed uint16)
+          handler: handleAaveBorrow
+        - event: Repay(indexed address,indexed address,indexed address,uint256,bool)
+          handler: handleAaveRepay
+        - event: Withdraw(indexed address,indexed address,indexed address,uint256)
+          handler: handleAaveWithdraw
+      file: ./src/aave-pool.ts
+  # Aave Oracle contract for price updates
+  - kind: ethereum
+    name: AaveOracle
+    network: { { network } }
+    source:
+      address: "{{AaveOracle.address}}"
+      abi: AaveOracle
+      startBlock: { { AaveOracle.startBlock } }
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - TokenPrice
+        - PriceSnapshot
+      abis:
+        - name: AaveOracle
+          file: ./abis/AaveOracle.json
+      eventHandlers:
+        - event: AssetSourceUpdated(indexed address,indexed address)
+          handler: handleAssetSourceUpdated
+      file: ./src/aave-oracle.ts
+  # Aave Pool Configurator for asset configuration events
+  - kind: ethereum
+    name: AavePoolConfigurator
+    network: { { network } }
+    source:
+      address: "{{AavePoolConfigurator.address}}"
+      abi: PoolConfigurator
+      startBlock: { { AavePoolConfigurator.startBlock } }
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - AssetConfiguration
+        - AssetConfigurationHistory
+        - TokenPrice
+      abis:
+        - name: PoolConfigurator
+          file: ./abis/PoolConfigurator.json
+      eventHandlers:
+        - event: ReserveInitialized(indexed address,indexed address,address,address,address)
+          handler: handleReserveInitialized
+        - event: CollateralConfigurationChanged(indexed address,uint256,uint256,uint256)
+          handler: handleCollateralConfigurationChanged
+        - event: ReserveBorrowing(indexed address,bool)
+          handler: handleReserveBorrowing
+        - event: ReserveStableRateBorrowing(indexed address,bool)
+          handler: handleReserveStableRateBorrowing
+        - event: ReserveFlashLoaning(indexed address,bool)
+          handler: handleReserveFlashLoaning
+        - event: ReserveActive(indexed address,bool)
+          handler: handleReserveActive
+        - event: ReserveFrozen(indexed address,bool)
+          handler: handleReserveFrozen
+        - event: ReservePaused(indexed address,bool)
+          handler: handleReservePaused
+        - event: BorrowCapChanged(indexed address,uint256,uint256)
+          handler: handleBorrowCapChanged
+        - event: SupplyCapChanged(indexed address,uint256,uint256)
+          handler: handleSupplyCapChanged
+        - event: ReserveFactorChanged(indexed address,uint256,uint256)
+          handler: handleReserveFactorChanged
+        - event: LiquidationProtocolFeeChanged(indexed address,uint256,uint256)
+          handler: handleLiquidationProtocolFeeChanged
+        - event: UnbackedMintCapChanged(indexed address,uint256,uint256)
+          handler: handleUnbackedMintCapChanged
+        - event: EModeAssetCategoryChanged(indexed address,uint8,uint8)
+          handler: handleEModeAssetCategoryChanged
+        - event: BorrowableInIsolationChanged(address,bool)
+          handler: handleBorrowableInIsolationChanged
+        - event: DebtCeilingChanged(indexed address,uint256,uint256)
+          handler: handleDebtCeilingChanged
+      file: ./src/pool-configurator.ts
+  # WETH Oracle
+  - kind: ethereum
+    name: WETHOracle
+    network: { { network } }
+    source:
+      address: "{{WETHOracle.address}}"
+      abi: ChainlinkAggregator
+      startBlock: { { WETHOracle.startBlock } }
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - TokenPrice
+        - PriceSnapshot
+      abis:
+        - name: ChainlinkAggregator
+          file: ./abis/ChainlinkAggregator.json
+      eventHandlers:
+        - event: AnswerUpdated(indexed int256,indexed uint256,uint256)
+          handler: handlePriceUpdated
+      file: ./src/chainlink-oracle.ts
+  # wstETH Oracle
+  - kind: ethereum
+    name: wstETHOracle
+    network: { { network } }
+    source:
+      address: "{{wstETHOracle.address}}"
+      abi: ChainlinkAggregator
+      startBlock: { { wstETHOracle.startBlock } }
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - TokenPrice
+        - PriceSnapshot
+      abis:
+        - name: ChainlinkAggregator
+          file: ./abis/ChainlinkAggregator.json
+      eventHandlers:
+        - event: AnswerUpdated(indexed int256,indexed uint256,uint256)
+          handler: handlePriceUpdated
+      file: ./src/chainlink-oracle.ts
+  # WBTC Oracle
+  - kind: ethereum
+    name: WBTCOracle
+    network: { { network } }
+    source:
+      address: "{{WBTCOracle.address}}"
+      abi: ChainlinkAggregator
+      startBlock: { { WBTCOracle.startBlock } }
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - TokenPrice
+        - PriceSnapshot
+      abis:
+        - name: ChainlinkAggregator
+          file: ./abis/ChainlinkAggregator.json
+      eventHandlers:
+        - event: AnswerUpdated(indexed int256,indexed uint256,uint256)
+          handler: handlePriceUpdated
+      file: ./src/chainlink-oracle.ts
