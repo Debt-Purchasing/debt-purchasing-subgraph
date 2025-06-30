@@ -79,7 +79,7 @@ ENV ETHEREUM_RPC="sepolia:https://sepolia.drpc.org"
 ENV IPFS_URL="http://localhost:5001"
 ENV RUST_LOG="info"
 ENV GRAPH_LOG="info"
-ENV PORT="8000"
+ENV PORT=8000
 
 # Expose ports
 EXPOSE 8000 8001 8020 8030 8040 5001 8080
