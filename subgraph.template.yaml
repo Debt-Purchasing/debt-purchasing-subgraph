@@ -213,3 +213,201 @@ dataSources:
         - event: AnswerUpdated(indexed int256,indexed uint256,uint256)
           handler: handlePriceUpdated
       file: ./src/chainlink-oracle.ts
+  # USDC Oracle
+  - kind: ethereum
+    name: USDCOracle
+    network: { { network } }
+    source:
+      address: "{{USDCOracle.address}}"
+      abi: ChainlinkAggregator
+      startBlock: { { USDCOracle.startBlock } }
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - TokenPrice
+        - PriceSnapshot
+      abis:
+        - name: ChainlinkAggregator
+          file: ./abis/ChainlinkAggregator.json
+      eventHandlers:
+        - event: AnswerUpdated(indexed int256,indexed uint256,uint256)
+          handler: handlePriceUpdated
+      file: ./src/chainlink-oracle.ts
+  # DAI Oracle
+  - kind: ethereum
+    name: DAIOracle
+    network: { { network } }
+    source:
+      address: "{{DAIOracle.address}}"
+      abi: ChainlinkAggregator
+      startBlock: { { DAIOracle.startBlock } }
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - TokenPrice
+        - PriceSnapshot
+      abis:
+        - name: ChainlinkAggregator
+          file: ./abis/ChainlinkAggregator.json
+      eventHandlers:
+        - event: AnswerUpdated(indexed int256,indexed uint256,uint256)
+          handler: handlePriceUpdated
+      file: ./src/chainlink-oracle.ts
+  # LINK Oracle
+  - kind: ethereum
+    name: LINKOracle
+    network: { { network } }
+    source:
+      address: "{{LINKOracle.address}}"
+      abi: ChainlinkAggregator
+      startBlock: { { LINKOracle.startBlock } }
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - TokenPrice
+        - PriceSnapshot
+      abis:
+        - name: ChainlinkAggregator
+          file: ./abis/ChainlinkAggregator.json
+      eventHandlers:
+        - event: AnswerUpdated(indexed int256,indexed uint256,uint256)
+          handler: handlePriceUpdated
+      file: ./src/chainlink-oracle.ts
+  # AAVE Oracle
+  - kind: ethereum
+    name: AAVEOracle
+    network: { { network } }
+    source:
+      address: "{{AAVEOracle.address}}"
+      abi: ChainlinkAggregator
+      startBlock: { { AAVEOracle.startBlock } }
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - TokenPrice
+        - PriceSnapshot
+      abis:
+        - name: ChainlinkAggregator
+          file: ./abis/ChainlinkAggregator.json
+      eventHandlers:
+        - event: AnswerUpdated(indexed int256,indexed uint256,uint256)
+          handler: handlePriceUpdated
+      file: ./src/chainlink-oracle.ts
+  # cbETH Oracle
+  - kind: ethereum
+    name: cbETHOracle
+    network: { { network } }
+    source:
+      address: "{{cbETHOracle.address}}"
+      abi: ChainlinkAggregator
+      startBlock: { { cbETHOracle.startBlock } }
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - TokenPrice
+        - PriceSnapshot
+      abis:
+        - name: ChainlinkAggregator
+          file: ./abis/ChainlinkAggregator.json
+      eventHandlers:
+        - event: AnswerUpdated(indexed int256,indexed uint256,uint256)
+          handler: handlePriceUpdated
+      file: ./src/chainlink-oracle.ts
+  # USDT Oracle
+  - kind: ethereum
+    name: USDTOracle
+    network: { { network } }
+    source:
+      address: "{{USDTOracle.address}}"
+      abi: ChainlinkAggregator
+      startBlock: { { USDTOracle.startBlock } }
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - TokenPrice
+        - PriceSnapshot
+      abis:
+        - name: ChainlinkAggregator
+          file: ./abis/ChainlinkAggregator.json
+      eventHandlers:
+        - event: AnswerUpdated(indexed int256,indexed uint256,uint256)
+          handler: handlePriceUpdated
+      file: ./src/chainlink-oracle.ts
+  # rETH Oracle
+  - kind: ethereum
+    name: rETHOracle
+    network: { { network } }
+    source:
+      address: "{{rETHOracle.address}}"
+      abi: ChainlinkAggregator
+      startBlock: { { rETHOracle.startBlock } }
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - TokenPrice
+        - PriceSnapshot
+      abis:
+        - name: ChainlinkAggregator
+          file: ./abis/ChainlinkAggregator.json
+      eventHandlers:
+        - event: AnswerUpdated(indexed int256,indexed uint256,uint256)
+          handler: handlePriceUpdated
+      file: ./src/chainlink-oracle.ts
+  # LUSD Oracle
+  - kind: ethereum
+    name: LUSDOracle
+    network: { { network } }
+    source:
+      address: "{{LUSDOracle.address}}"
+      abi: ChainlinkAggregator
+      startBlock: { { LUSDOracle.startBlock } }
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - TokenPrice
+        - PriceSnapshot
+      abis:
+        - name: ChainlinkAggregator
+          file: ./abis/ChainlinkAggregator.json
+      eventHandlers:
+        - event: AnswerUpdated(indexed int256,indexed uint256,uint256)
+          handler: handlePriceUpdated
+      file: ./src/chainlink-oracle.ts
+  # CRV Oracle
+  - kind: ethereum
+    name: CRVOracle
+    network: { { network } }
+    source:
+      address: "{{CRVOracle.address}}"
+      abi: ChainlinkAggregator
+      startBlock: { { CRVOracle.startBlock } }
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - TokenPrice
+        - PriceSnapshot
+      abis:
+        - name: ChainlinkAggregator
+          file: ./abis/ChainlinkAggregator.json
+      eventHandlers:
+        - event: AnswerUpdated(indexed int256,indexed uint256,uint256)
+          handler: handlePriceUpdated
+      file: ./src/chainlink-oracle.ts

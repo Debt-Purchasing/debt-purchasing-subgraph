@@ -1,33 +1,71 @@
-FROM ubuntu:22.04
+FROM debian:bullseye-slim
 
+# Set non-interactive mode to avoid prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
 
-# 1. Cài các package cần thiết
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
-    wget curl ca-certificates \
-    postgresql postgresql-contrib \
+    curl \
+    wget \
+    gnupg \
+    lsb-release \
+    ca-certificates \
+    software-properties-common \
     supervisor \
+    postgresql \
+    postgresql-contrib \
+    sudo \
+    build-essential \
+    pkg-config \
+    libssl-dev \
+    protobuf-compiler \
     && rm -rf /var/lib/apt/lists/*
 
-# 2. Cài Graph Node binary (v0.38.0)
-RUN wget -qO graph-node.tar.gz \
-    https://github.com/graphprotocol/graph-node/releases/download/v0.38.0/graph-node-v0.38.0-x86_64-unknown-linux-musl.tar.gz \
-    && tar -xzf graph-node.tar.gz \
-    && mv graph-node-v0.38.0-x86_64-unknown-linux-musl/graph-node /usr/local/bin/graph-node \
-    && chmod +x /usr/local/bin/graph-node \
-    && rm -rf graph-node.tar.gz graph-node-v0.38.0-*
+# Install Node.js (needed for Graph Node)
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs
 
-# 3. Tạo thư mục Postgres data
-RUN mkdir -p /var/lib/postgresql/data && chown -R postgres:postgres /var/lib/postgresql/data
+# Copy Graph Node binary from official Docker image
+COPY --from=graphprotocol/graph-node:v0.35.1 /usr/local/bin/graph-node /usr/local/bin/graph-node
 
-# 4. Init Postgres
-RUN su postgres -c '/usr/lib/postgresql/14/bin/initdb -D /var/lib/postgresql/data'
+# Create app directory
+WORKDIR /app
 
-# 5. Copy cấu hình supervisor
+# Copy supervisord configuration
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# 6. Expose các cổng dịch vụ
-EXPOSE 8000 8001 8002 5432
+# Copy subgraph files
+COPY . .
 
-# 7. Start supervisor
-CMD ["/usr/bin/supervisord", "-n"]
+# Install subgraph dependencies
+RUN npm install
+
+# Create log directories
+RUN mkdir -p /var/log/supervisor
+
+# Configure PostgreSQL (find correct version)
+RUN PG_VERSION=$(ls /etc/postgresql/) && \
+    echo "host all all 0.0.0.0/0 md5" >> /etc/postgresql/$PG_VERSION/main/pg_hba.conf && \
+    echo "listen_addresses='*'" >> /etc/postgresql/$PG_VERSION/main/postgresql.conf
+
+# Create init script for PostgreSQL
+COPY init-postgres.sh /app/init-postgres.sh
+RUN chmod +x /app/init-postgres.sh
+
+# Create entrypoint script
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+# Set environment variables
+ENV DATABASE_URL="postgresql://postgres@localhost:5432/postgres"
+ENV ETHEREUM_RPC="sepolia:https://eth-sepolia.g.alchemy.com/v2/PoCLQrNqYS_AT_HdUsPdBzOD1I067hLd"
+ENV IPFS_URL="https://ipfs.thegraph.com"
+ENV RUST_LOG="info"
+ENV GRAPH_LOG="info"
+ENV PORT="8000"
+
+# Expose ports
+EXPOSE 8000 8001 8020 8030 8040
+
+# Use entrypoint script
+CMD ["/app/entrypoint.sh"] 
