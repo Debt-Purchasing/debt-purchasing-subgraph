@@ -24,10 +24,10 @@ RUN cargo install --git https://github.com/graphprotocol/graph-node graph-node
 RUN mkdir -p /var/log/supervisor /var/lib/postgresql/data
 RUN chown -R postgres:postgres /var/lib/postgresql
 
-# Init Postgres DB (manual init because we don’t use systemd)
-/bin/bash -c "su postgres -c '/usr/lib/postgresql/14/bin/initdb -D /var/lib/postgresql/data'"
+# Init Postgres DB properly
+RUN su postgres -c '/usr/lib/postgresql/14/bin/initdb -D /var/lib/postgresql/data'
 
-# Copy config
+# Copy supervisord config
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 EXPOSE 8000 8001 8002 5432
