@@ -15,9 +15,6 @@ RUN apt-get update && apt-get install -y \
   supervisor sudo \
   && rm -rf /var/lib/apt/lists/*
 
-# Add postgres user manually
-RUN useradd -m postgres
-
 # Install Rust & Graph Node
 RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
