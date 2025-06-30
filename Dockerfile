@@ -6,16 +6,14 @@ ENV POSTGRES_PASSWORD=password
 ENV POSTGRES_DB=graph
 
 RUN apt-get update && apt-get install -y \
-  wget curl ca-certificates \
-  postgresql postgresql-contrib \
-  supervisor \
+  wget ca-certificates postgresql postgresql-contrib supervisor \
   && rm -rf /var/lib/apt/lists/*
 
-# Download graph-node v0.38.0 binary
+# Download graph-node v0.38.0 (GNU build)
 RUN wget -qO graph-node.tar.gz \
-     https://github.com/graphprotocol/graph-node/releases/download/v0.38.0/graph-node-v0.38.0-x86_64-unknown-linux-musl.tar.gz \
+     https://github.com/graphprotocol/graph-node/releases/download/v0.38.0/graph-node-v0.38.0-x86_64-unknown-linux-gnu.tar.gz \
   && tar -xzf graph-node.tar.gz \
-  && mv graph-node-v0.38.0-x86_64-unknown-linux-musl/graph-node /usr/local/bin/graph-node \
+  && mv graph-node-v0.38.0-x86_64-unknown-linux-gnu/graph-node /usr/local/bin/graph-node \
   && chmod +x /usr/local/bin/graph-node \
   && rm -rf graph-node.tar.gz graph-node-v0.38.0-*
 
