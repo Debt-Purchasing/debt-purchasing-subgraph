@@ -1,6 +1,0 @@
-{
-  "network": "mainnet",
-  "aaveRouterAddress": "0x0000000000000000000000000000000000000000",
-  "aaveRouterStartBlock": 0,
-  "description": "Mainnet configuration - update addresses and start blocks after deployment"
-}
