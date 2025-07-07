@@ -1,8 +1,4 @@
-import { Address, BigInt, BigDecimal, log } from "@graphprotocol/graph-ts";
-import {
-  AssetSourceUpdated as AssetSourceUpdatedEvent,
-  FallbackOracleUpdated as FallbackOracleUpdatedEvent,
-} from "../generated/AaveOracle/AaveOracle";
+import { AssetSourceUpdated as AssetSourceUpdatedEvent } from "../generated/AaveOracle/AaveOracle";
 import {
   getTokenSymbol,
   getOracleTokenSymbol,
@@ -10,15 +6,13 @@ import {
   createOrUpdateAssetOracleMapping,
   createOrUpdateOracleAssetMapping,
 } from "./helpers";
+import { ChainlinkOracleTemplate } from "../generated/templates";
 
 export function handleAssetSourceUpdated(event: AssetSourceUpdatedEvent): void {
   let assetAddress = event.params.asset;
   let oracleAddress = event.params.source;
 
-  log.info("Oracle mapping updated: asset {} -> oracle {}", [
-    assetAddress.toHexString(),
-    oracleAddress.toHexString(),
-  ]);
+  ChainlinkOracleTemplate.create(oracleAddress);
 
   // Create or update bidirectional mappings
   createOrUpdateAssetOracleMapping(
@@ -43,19 +37,10 @@ export function handleAssetSourceUpdated(event: AssetSourceUpdatedEvent): void {
     assetSymbol != "UNKNOWN" &&
     oracleSymbol != "UNKNOWN"
   ) {
-    log.warning("Symbol mismatch: asset {} oracle {}", [
-      assetSymbol,
-      oracleSymbol,
-    ]);
   }
 
   let token = initializeToken(assetAddress, assetSymbol, oracleAddress);
 
   token.lastUpdatedAt = event.block.timestamp;
   token.save();
-
-  log.info("Token initialized: {} with oracle {}", [
-    assetSymbol,
-    oracleAddress.toHexString(),
-  ]);
 }

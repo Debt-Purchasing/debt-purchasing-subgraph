@@ -1,4 +1,4 @@
-import { BigInt, BigDecimal, log } from "@graphprotocol/graph-ts";
+import { BigInt, BigDecimal } from "@graphprotocol/graph-ts";
 import {
   Supply as AaveSupplyEvent,
   Borrow as AaveBorrowEvent,
@@ -9,21 +9,12 @@ import {
   DebtPosition,
   PositionCollateral,
   PositionDebt,
+  ProtocolCollateral,
+  ProtocolDebt,
 } from "../generated/schema";
-import {
-  getOrCreateToken,
-  getTokenPriceUSD,
-  calculateUSDValue,
-  getTokenSymbol,
-} from "./helpers";
+import { getOrCreateToken, calculateUSDValue } from "./helpers";
 
 export function handleAaveSupply(event: AaveSupplyEvent): void {
-  log.info("Handling Aave Supply event for user: {} asset: {} amount: {}", [
-    event.params.user.toHexString(),
-    event.params.reserve.toHexString(),
-    event.params.amount.toString(),
-  ]);
-
   // Check if this is one of our debt positions
   let position = DebtPosition.load(event.params.onBehalfOf.toHexString());
   if (position != null) {
@@ -49,34 +40,28 @@ export function handleAaveSupply(event: AaveSupplyEvent): void {
     collateral.lastUpdatedAt = event.block.timestamp;
     collateral.save();
 
-    // Log supply details
-    let tokenSymbol = getTokenSymbol(event.params.reserve);
-    let usdValue = calculateUSDValue(event.params.reserve, amountDecimal);
-    log.info(
-      "Supply processed: {} {} (${}) added as collateral to position {}",
-      [amountDecimal.toString(), tokenSymbol, usdValue.toString(), position.id]
-    );
+    let protocolCollateralId =
+      "protocol-collateral-" + event.params.reserve.toHexString();
+    let protocolCollateral = ProtocolCollateral.load(protocolCollateralId);
+    if (protocolCollateral == null) {
+      protocolCollateral = new ProtocolCollateral(protocolCollateralId);
+      protocolCollateral.protocol = "protocol";
+      protocolCollateral.token = event.params.reserve.toHexString();
+      protocolCollateral.amount = amountDecimal;
+      protocolCollateral.lastUpdatedAt = event.block.timestamp;
+      protocolCollateral.save();
+    } else {
+      protocolCollateral.amount = protocolCollateral.amount.plus(amountDecimal);
+      protocolCollateral.lastUpdatedAt = event.block.timestamp;
+      protocolCollateral.save();
+    }
   }
-
-  // updateProtocolMetrics(event.block.timestamp);
 }
 
 export function handleAaveBorrow(event: AaveBorrowEvent): void {
-  log.info("Handling Aave Borrow event for user: {} asset: {} amount: {}", [
-    event.params.user.toHexString(),
-    event.params.reserve.toHexString(),
-    event.params.amount.toString(),
-  ]);
-
-  log.info("Borrow event onBehalfOf: {}", [
-    event.params.onBehalfOf.toHexString(),
-  ]);
-
   // Check if this is one of our debt positions
   let position = DebtPosition.load(event.params.onBehalfOf.toHexString());
-  log.info("Position lookup result: {}", [position == null ? "null" : "found"]);
   if (position != null) {
-    log.info("Found debt position: {}", [position.id]);
     // Update debt for this position
     let debtId =
       position.id +
@@ -105,36 +90,26 @@ export function handleAaveBorrow(event: AaveBorrowEvent): void {
     debt.lastUpdatedAt = event.block.timestamp;
     debt.save();
 
-    // Log borrow details
-    let tokenSymbol = getTokenSymbol(event.params.reserve);
-    let usdValue = calculateUSDValue(event.params.reserve, amountDecimal);
-    let rateMode = event.params.interestRateMode == 1 ? "stable" : "variable";
-    log.info(
-      "Borrow processed: {} {} (${}) added as {} rate debt to position {}",
-      [
-        amountDecimal.toString(),
-        tokenSymbol,
-        usdValue.toString(),
-        rateMode,
-        position.id,
-      ]
-    );
-  } else {
-    log.warning("No debt position found for onBehalfOf: {}", [
-      event.params.onBehalfOf.toHexString(),
-    ]);
+    let protocolDebtId = "protocol-debt-" + event.params.reserve.toHexString();
+    let protocolDebt = ProtocolDebt.load(protocolDebtId);
+    if (protocolDebt == null) {
+      protocolDebt = new ProtocolDebt(protocolDebtId);
+      protocolDebt.protocol = "protocol";
+      protocolDebt.token = event.params.reserve.toHexString();
+      protocolDebt.amount = amountDecimal;
+      protocolDebt.lastUpdatedAt = event.block.timestamp;
+      protocolDebt.save();
+    } else {
+      protocolDebt.amount = protocolDebt.amount.plus(amountDecimal);
+      protocolDebt.lastUpdatedAt = event.block.timestamp;
+      protocolDebt.save();
+    }
   }
 
   // updateProtocolMetrics(event.block.timestamp);
 }
 
 export function handleAaveRepay(event: AaveRepayEvent): void {
-  log.info("Handling Aave Repay event for user: {} asset: {} amount: {}", [
-    event.params.user.toHexString(),
-    event.params.reserve.toHexString(),
-    event.params.amount.toString(),
-  ]);
-
   // Check if this is one of our debt positions
   let position = DebtPosition.load(event.params.user.toHexString());
   if (position != null) {
@@ -184,35 +159,24 @@ export function handleAaveRepay(event: AaveRepayEvent): void {
       }
     }
 
-    // Log repay details
-    let tokenSymbol = getTokenSymbol(event.params.reserve);
-    log.info("Repay processed: {} {} (${}) debt reduced for position {}", [
-      event.params.amount
-        .toBigDecimal()
-        .div(BigDecimal.fromString("1000000000000000000"))
-        .toString(),
-      tokenSymbol,
-      totalRepaidUSD.toString(),
-      position.id,
-    ]);
+    let protocolDebtId = "protocol-debt-" + event.params.reserve.toHexString();
+    let protocolDebt = ProtocolDebt.load(protocolDebtId);
+    if (protocolDebt != null) {
+      protocolDebt.amount = protocolDebt.amount.minus(amountDecimal);
+      protocolDebt.lastUpdatedAt = event.block.timestamp;
+      protocolDebt.save();
+    }
   }
-
-  // updateProtocolMetrics(event.block.timestamp);
 }
 
 export function handleAaveWithdraw(event: AaveWithdrawEvent): void {
-  log.info("Handling Aave Withdraw event for user: {} asset: {} amount: {}", [
-    event.params.user.toHexString(),
-    event.params.reserve.toHexString(),
-    event.params.amount.toString(),
-  ]);
-
   // Check if this is one of our debt positions
   let position = DebtPosition.load(event.params.user.toHexString());
   if (position != null) {
     // Update collateral for this position (subtract withdrawal)
     let collateralId = position.id + "-" + event.params.reserve.toHexString();
     let collateral = PositionCollateral.load(collateralId);
+    let amountDecimal = BigDecimal.fromString("0");
     if (collateral != null) {
       let token = getOrCreateToken(event.params.reserve);
       let decimals = token.decimals;
@@ -220,8 +184,7 @@ export function handleAaveWithdraw(event: AaveWithdrawEvent): void {
       for (let i = 0; i < decimals; i++) {
         divisor = divisor.times(BigDecimal.fromString("10"));
       }
-      let amountDecimal = event.params.amount.toBigDecimal().div(divisor);
-      let withdrawnUSD = calculateUSDValue(event.params.reserve, amountDecimal);
+      amountDecimal = event.params.amount.toBigDecimal().div(divisor);
 
       collateral.amount = collateral.amount.minus(amountDecimal);
       if (collateral.amount.lt(BigDecimal.fromString("0"))) {
@@ -230,20 +193,17 @@ export function handleAaveWithdraw(event: AaveWithdrawEvent): void {
       collateral.lastUpdatedAt = event.block.timestamp;
 
       collateral.save();
+    }
 
-      // Log withdraw details
-      let tokenSymbol = getTokenSymbol(event.params.reserve);
-      log.info(
-        "Withdraw processed: {} {} (${}) removed from collateral of position {}",
-        [
-          amountDecimal.toString(),
-          tokenSymbol,
-          withdrawnUSD.toString(),
-          position.id,
-        ]
+    let protocolCollateralId =
+      "protocol-collateral-" + event.params.reserve.toHexString();
+    let protocolCollateral = ProtocolCollateral.load(protocolCollateralId);
+    if (protocolCollateral != null) {
+      protocolCollateral.amount = protocolCollateral.amount.minus(
+        amountDecimal
       );
+      protocolCollateral.lastUpdatedAt = event.block.timestamp;
+      protocolCollateral.save();
     }
   }
-
-  // updateProtocolMetrics(event.block.timestamp);
 }

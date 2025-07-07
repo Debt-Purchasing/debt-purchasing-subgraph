@@ -1,12 +1,12 @@
-import { BigInt, BigDecimal, Address, log } from "@graphprotocol/graph-ts";
+import { BigInt, BigDecimal, Address } from "@graphprotocol/graph-ts";
 import {
   Token,
   PriceSnapshot,
   ProtocolMetrics,
   DebtPosition,
-  User,
   AssetOracleMapping,
   OracleAssetMapping,
+  User,
 } from "../generated/schema";
 
 // Helper function to get or create Token entity (merged from TokenPrice)
@@ -52,22 +52,11 @@ export function createOrUpdateAssetOracleMapping(
     mapping.isActive = true;
     mapping.createdAt = timestamp;
     mapping.lastUpdatedAt = timestamp;
-
-    log.info("Created asset-oracle mapping: {} -> {}", [
-      assetAddress.toHexString(),
-      oracleAddress.toHexString(),
-    ]);
   } else {
     // Update existing mapping
     let oldOracle = mapping.oracle.toHexString();
     mapping.oracle = oracleAddress;
     mapping.lastUpdatedAt = timestamp;
-
-    log.info("Updated asset-oracle mapping: {} from {} to {}", [
-      assetAddress.toHexString(),
-      oldOracle,
-      oracleAddress.toHexString(),
-    ]);
   }
 
   mapping.save();
@@ -99,22 +88,10 @@ export function createOrUpdateOracleAssetMapping(
     mapping.isActive = true;
     mapping.createdAt = timestamp;
     mapping.lastUpdatedAt = timestamp;
-
-    log.info("Created oracle-asset reverse mapping: {} -> {}", [
-      oracleAddress.toHexString(),
-      assetAddress.toHexString(),
-    ]);
   } else {
     // Update existing mapping
-    let oldAsset = mapping.asset.toHexString();
     mapping.asset = assetAddress;
     mapping.lastUpdatedAt = timestamp;
-
-    log.info("Updated oracle-asset reverse mapping: {} from {} to {}", [
-      oracleAddress.toHexString(),
-      oldAsset,
-      assetAddress.toHexString(),
-    ]);
   }
 
   mapping.save();
@@ -147,21 +124,6 @@ export function createPriceSnapshot(
   snapshot.save();
 }
 
-// Helper function to update protocol metrics
-export function updateProtocolMetrics(timestamp: BigInt): void {
-  let metrics = ProtocolMetrics.load("protocol");
-  if (metrics == null) {
-    metrics = new ProtocolMetrics("protocol");
-    metrics.totalUsers = BigInt.fromI32(0);
-    metrics.totalPositions = BigInt.fromI32(0);
-    metrics.totalVolumeUSD = BigDecimal.fromString("0");
-    metrics.lastUpdatedAt = timestamp;
-  }
-
-  metrics.lastUpdatedAt = timestamp;
-  metrics.save();
-}
-
 // Helper function to get or create debt position
 export function getOrCreateDebtPosition(
   address: Address,
@@ -171,15 +133,10 @@ export function getOrCreateDebtPosition(
   let position = DebtPosition.load(address.toHexString());
   if (position == null) {
     position = new DebtPosition(address.toHexString());
-    position.owner = owner.toHexString();
+    position.owner = owner;
     position.nonce = BigInt.fromI32(0);
     position.lastUpdatedAt = timestamp;
     position.save();
-
-    // Update user
-    let user = getOrCreateUser(owner, timestamp);
-    user.totalPositions = user.totalPositions.plus(BigInt.fromI32(1));
-    user.save();
 
     // Update protocol metrics
     let metrics = ProtocolMetrics.load("protocol");
@@ -191,26 +148,6 @@ export function getOrCreateDebtPosition(
   return position;
 }
 
-// Helper function to get or create user
-export function getOrCreateUser(address: Address, timestamp: BigInt): User {
-  let user = User.load(address.toHexString());
-  if (user == null) {
-    user = new User(address.toHexString());
-    user.totalPositions = BigInt.fromI32(0);
-    user.totalOrdersExecuted = BigInt.fromI32(0);
-    user.totalVolumeTraded = BigDecimal.fromString("0");
-    user.save();
-
-    // Update protocol metrics
-    let metrics = ProtocolMetrics.load("protocol");
-    if (metrics != null) {
-      metrics.totalUsers = metrics.totalUsers.plus(BigInt.fromI32(1));
-      metrics.save();
-    }
-  }
-  return user;
-}
-
 // Helper function to get current token price in USD
 export function getTokenPriceUSD(tokenAddress: Address): BigDecimal {
   let token = Token.load(tokenAddress.toHexString());
@@ -219,9 +156,6 @@ export function getTokenPriceUSD(tokenAddress: Address): BigDecimal {
   }
 
   // Return a default price if not found (this should rarely happen)
-  log.warning("No price found for token {}, using default", [
-    tokenAddress.toHexString(),
-  ]);
   return BigDecimal.fromString("1"); // Default $1 USD
 }
 

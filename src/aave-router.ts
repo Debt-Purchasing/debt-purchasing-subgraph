@@ -1,213 +1,239 @@
-import { BigInt, BigDecimal, Address, ethereum } from "@graphprotocol/graph-ts";
+import { BigDecimal, BigInt } from "@graphprotocol/graph-ts";
 import {
   CreateDebt,
   TransferDebtOwnership,
   CancelCurrentDebtOrders,
   ExecuteFullSaleOrder,
   ExecutePartialSellOrder,
+  CancelOrder,
 } from "../generated/AaveRouter/AaveRouter";
 import {
-  User,
   DebtPosition,
-  Transaction,
-  ProtocolMetrics,
-  FullSaleOrderExecution,
+  FullOrderExecution,
   PartialOrderExecution,
+  CancelledOrder,
+  User,
+  ProtocolMetrics,
 } from "../generated/schema";
 
 // Constants
 const ZERO_BI = BigInt.fromI32(0);
 const ONE_BI = BigInt.fromI32(1);
-const ZERO_BD = BigDecimal.fromString("0");
-
-// Helper function to get or create User
-function getOrCreateUser(address: Address): User {
-  let user = User.load(address.toHexString());
-  if (user == null) {
-    user = new User(address.toHexString());
-    user.totalPositions = ZERO_BI;
-    user.totalOrdersExecuted = ZERO_BI;
-    user.totalVolumeTraded = ZERO_BD;
-    user.save();
-  }
-  return user;
-}
-
-// Helper function to get or create ProtocolMetrics
-function getOrCreateProtocolMetrics(): ProtocolMetrics {
-  let metrics = ProtocolMetrics.load("protocol");
-  if (metrics == null) {
-    metrics = new ProtocolMetrics("protocol");
-    metrics.totalPositions = ZERO_BI;
-    metrics.totalVolumeUSD = ZERO_BD;
-    metrics.totalUsers = ZERO_BI;
-    metrics.lastUpdatedAt = ZERO_BI;
-    metrics.save();
-  }
-  return metrics;
-}
-
-// Helper function to create Transaction entity
-function createTransaction(event: ethereum.Event): Transaction {
-  let transaction = new Transaction(event.transaction.hash.toHexString());
-  transaction.blockNumber = event.block.number;
-  transaction.timestamp = event.block.timestamp;
-  transaction.gasUsed = ZERO_BI; // TODO: Get actual gas used from receipt
-  transaction.gasPrice = event.transaction.gasPrice.toBigDecimal();
-  transaction.from = event.transaction.from;
-  transaction.to = event.transaction.to
-    ? event.transaction.to!
-    : Address.zero();
-  transaction.save();
-  return transaction;
-}
 
 export function handleCreateDebt(event: CreateDebt): void {
-  // Create transaction record
-  createTransaction(event);
-
-  // Get or create user
-  let user = getOrCreateUser(event.params.owner);
-  user.totalPositions = user.totalPositions.plus(ONE_BI);
-  user.save();
+  let user = User.load(event.params.owner.toHexString());
+  if (user == null) {
+    user = new User(event.params.owner.toHexString());
+    user.lastUpdatedAt = event.block.timestamp;
+    user.nonce = BigInt.fromI32(1);
+    user.totalPositions = BigInt.fromI32(1);
+    user.totalOrdersExecuted = ZERO_BI;
+    user.totalVolumeUSD = BigDecimal.fromString("0");
+    user.save();
+  } else {
+    user.nonce = user.nonce.plus(ONE_BI);
+    user.totalPositions = user.totalPositions.plus(ONE_BI);
+    user.lastUpdatedAt = event.block.timestamp;
+    user.save();
+  }
 
   // Create debt position
   let position = new DebtPosition(event.params.debt.toHexString());
-  position.owner = user.id;
+  position.owner = event.params.owner;
   position.nonce = ZERO_BI;
   position.createdAt = event.block.timestamp;
   position.lastUpdatedAt = event.block.timestamp;
   position.save();
 
-  // // Update protocol metrics
-  // let metrics = getOrCreateProtocolMetrics();
-  // metrics.totalPositions = metrics.totalPositions.plus(ONE_BI);
-  // metrics.lastUpdatedAt = event.block.timestamp;
-  // metrics.save();
+  let protocol = ProtocolMetrics.load("protocol");
+  if (protocol == null) {
+    protocol = new ProtocolMetrics("protocol");
+    protocol.totalUsers = ONE_BI;
+    protocol.totalPositions = ONE_BI;
+    protocol.fullOrdersUSD = BigDecimal.fromString("0");
+    protocol.partialOrdersUSD = BigDecimal.fromString("0");
+    protocol.lastUpdatedAt = event.block.timestamp;
+    protocol.save();
+  } else {
+    protocol.totalPositions = protocol.totalPositions.plus(ONE_BI);
+    protocol.totalUsers = protocol.totalUsers.plus(ONE_BI);
+    protocol.lastUpdatedAt = event.block.timestamp;
+    protocol.save();
+  }
 }
 
 export function handleTransferDebtOwnership(
   event: TransferDebtOwnership
 ): void {
-  createTransaction(event);
-
   let position = DebtPosition.load(event.params.debt.toHexString());
   if (position != null) {
-    // Update old owner
-    let oldUser = User.load(position.owner);
-    if (oldUser != null) {
-      oldUser.save();
-    }
-
-    // Update new owner
-    let newUser = getOrCreateUser(event.params.newOwner);
-    newUser.totalPositions = newUser.totalPositions.plus(ONE_BI);
-    newUser.save();
-
-    // Update position
-    position.owner = newUser.id;
-    position.nonce = position.nonce.plus(ONE_BI);
+    let oldOwnerAddress = position.owner;
+    position.owner = event.params.newOwner;
     position.lastUpdatedAt = event.block.timestamp;
     position.save();
+
+    let newOwner = User.load(event.params.newOwner.toHexString());
+    if (newOwner == null) {
+      newOwner = new User(event.params.newOwner.toHexString());
+      newOwner.nonce = ZERO_BI;
+      newOwner.totalPositions = BigInt.fromI32(1);
+      newOwner.totalVolumeUSD = BigDecimal.fromString("0");
+      newOwner.lastUpdatedAt = event.block.timestamp;
+      newOwner.save();
+    } else {
+      newOwner.totalPositions = newOwner.totalPositions.plus(ONE_BI);
+      newOwner.lastUpdatedAt = event.block.timestamp;
+      newOwner.save();
+    }
+
+    let oldOwner = User.load(oldOwnerAddress.toHexString());
+    if (oldOwner != null) {
+      oldOwner.totalPositions = oldOwner.totalPositions.minus(ONE_BI);
+      oldOwner.lastUpdatedAt = event.block.timestamp;
+      oldOwner.save();
+    }
   }
 }
 
 export function handleCancelCurrentDebtOrders(
   event: CancelCurrentDebtOrders
 ): void {
-  createTransaction(event);
-
   let position = DebtPosition.load(event.params.debt.toHexString());
   if (position != null) {
     position.nonce = position.nonce.plus(ONE_BI);
     position.lastUpdatedAt = event.block.timestamp;
     position.save();
-
-    // Update user activity
-    let user = User.load(position.owner);
-    if (user != null) {
-      user.save();
-    }
   }
 }
 
+export function handleCancelOrder(event: CancelOrder): void {
+  let cancelledOrder = new CancelledOrder(event.params.titleHash.toHexString());
+  cancelledOrder.titleHash = event.params.titleHash;
+  cancelledOrder.cancelledAt = event.block.timestamp;
+  cancelledOrder.save();
+}
+
 export function handleExecuteFullSaleOrder(event: ExecuteFullSaleOrder): void {
-  createTransaction(event);
+  // Create full sale execution record
+  let execution = new FullOrderExecution(event.transaction.hash.toHexString());
+  execution.titleHash = event.params.titleHash;
+  execution.buyer = event.params.buyer;
+  execution.blockTimestamp = event.block.timestamp;
+  execution.blockNumber = event.block.number;
+  execution.usdValue = BigDecimal.fromString(
+    event.params.baseValue.toString()
+  ).div(BigDecimal.fromString("100000000"));
+  execution.save();
 
   let position = DebtPosition.load(event.params.debt.toHexString());
   if (position != null) {
-    // Get current seller before updating position
-    let seller = User.load(position.owner);
-
-    // Update buyer
-    let buyer = getOrCreateUser(event.params.buyer);
-    buyer.totalOrdersExecuted = buyer.totalOrdersExecuted.plus(ONE_BI);
-    buyer.save();
-
-    // Update seller if exists
-    if (seller != null) {
-      seller.save();
-    }
-
-    // Update position ownership - this transfers the entire position
-    position.owner = buyer.id;
-    position.nonce = event.params.debtNonce;
+    position.nonce = position.nonce.plus(ONE_BI);
+    position.owner = event.params.buyer;
     position.lastUpdatedAt = event.block.timestamp;
     position.save();
+  }
 
-    // Create full sale execution record
-    let execution = new FullSaleOrderExecution(
-      event.transaction.hash.toHexString()
+  let newOwner = User.load(event.params.buyer.toHexString());
+  if (newOwner == null) {
+    newOwner = new User(event.params.buyer.toHexString());
+    newOwner.lastUpdatedAt = event.block.timestamp;
+    newOwner.nonce = ZERO_BI;
+    newOwner.totalPositions = ONE_BI;
+    newOwner.totalOrdersExecuted = ONE_BI;
+    newOwner.totalVolumeUSD = BigDecimal.fromString(
+      event.params.baseValue.toString()
+    ).div(BigDecimal.fromString("100000000"));
+    newOwner.save();
+  } else {
+    newOwner.totalPositions = newOwner.totalPositions.plus(ONE_BI);
+    newOwner.lastUpdatedAt = event.block.timestamp;
+    newOwner.totalOrdersExecuted = newOwner.totalOrdersExecuted.plus(ONE_BI);
+    newOwner.totalVolumeUSD = newOwner.totalVolumeUSD.plus(
+      BigDecimal.fromString(event.params.baseValue.toString()).div(
+        BigDecimal.fromString("100000000")
+      )
     );
-    execution.position = position.id;
-    execution.buyer = buyer.id;
-    execution.seller = seller ? seller.id : buyer.id; // Fallback if seller not found
-    execution.debtNonce = event.params.debtNonce;
-    execution.gasUsed = ZERO_BI; // Will be filled by actual gas from transaction receipt if available
-    execution.gasPriceGwei = event.transaction.gasPrice.toBigDecimal();
-    execution.executionTime = event.block.timestamp;
-    execution.blockNumber = event.block.number;
-    execution.save();
+    newOwner.save();
+  }
+
+  let oldOwner = User.load(event.params.seller.toHexString());
+  if (oldOwner != null) {
+    oldOwner.totalPositions = oldOwner.totalPositions.minus(ONE_BI);
+    oldOwner.lastUpdatedAt = event.block.timestamp;
+    oldOwner.totalOrdersExecuted = oldOwner.totalOrdersExecuted.plus(ONE_BI);
+    oldOwner.totalVolumeUSD = oldOwner.totalVolumeUSD.plus(
+      BigDecimal.fromString(event.params.baseValue.toString()).div(
+        BigDecimal.fromString("100000000")
+      )
+    );
+    oldOwner.save();
+  }
+
+  let protocol = ProtocolMetrics.load("protocol");
+  if (protocol != null) {
+    protocol.fullOrdersUSD = protocol.fullOrdersUSD.plus(
+      BigDecimal.fromString(event.params.baseValue.toString()).div(
+        BigDecimal.fromString("100000000")
+      )
+    );
+    protocol.save();
   }
 }
 
 export function handleExecutePartialSellOrder(
   event: ExecutePartialSellOrder
 ): void {
-  createTransaction(event);
+  // Create partial order execution record
+  let execution = new PartialOrderExecution(
+    event.transaction.hash.toHexString()
+  );
+  execution.titleHash = event.params.titleHash;
+  execution.buyer = event.params.buyer;
+  execution.blockTimestamp = event.block.timestamp;
+  execution.blockNumber = event.block.number;
+  execution.save();
 
-  let position = DebtPosition.load(event.params.debt.toHexString());
-  if (position != null) {
-    // Get seller (position owner remains unchanged in partial execution)
-    let seller = User.load(position.owner);
-
-    // Update buyer
-    let buyer = getOrCreateUser(event.params.buyer);
-    buyer.totalOrdersExecuted = buyer.totalOrdersExecuted.plus(ONE_BI);
-    buyer.save();
-
-    // Update seller if exists
-    if (seller != null) {
-      seller.save();
-    }
-
-    // Update position nonce but ownership stays the same
-    position.nonce = event.params.debtNonce;
-    position.lastUpdatedAt = event.block.timestamp;
-    position.save();
-
-    // Create partial order execution record
-    let execution = new PartialOrderExecution(
-      event.transaction.hash.toHexString()
+  let seller = User.load(event.params.seller.toHexString());
+  if (seller != null) {
+    seller.totalOrdersExecuted = seller.totalOrdersExecuted.plus(ONE_BI);
+    seller.lastUpdatedAt = event.block.timestamp;
+    seller.totalVolumeUSD = seller.totalVolumeUSD.plus(
+      BigDecimal.fromString(event.params.baseValue.toString()).div(
+        BigDecimal.fromString("100000000")
+      )
     );
-    execution.position = position.id;
-    execution.buyer = buyer.id;
-    execution.seller = seller ? seller.id : position.owner; // Fallback to position owner
-    execution.debtNonce = event.params.debtNonce;
-    execution.gasUsed = ZERO_BI; // Will be filled by actual gas from transaction receipt if available
-    execution.gasPriceGwei = event.transaction.gasPrice.toBigDecimal();
-    execution.executionTime = event.block.timestamp;
-    execution.blockNumber = event.block.number;
-    execution.save();
+    seller.save();
+  }
+
+  let buyer = User.load(event.params.buyer.toHexString());
+  if (buyer == null) {
+    buyer = new User(event.params.buyer.toHexString());
+    buyer.lastUpdatedAt = event.block.timestamp;
+    buyer.nonce = ZERO_BI;
+    buyer.totalPositions = ZERO_BI;
+    buyer.totalOrdersExecuted = ONE_BI;
+    buyer.totalVolumeUSD = BigDecimal.fromString(
+      event.params.baseValue.toString()
+    ).div(BigDecimal.fromString("100000000"));
+    buyer.save();
+  } else {
+    buyer.totalOrdersExecuted = buyer.totalOrdersExecuted.plus(ONE_BI);
+    buyer.lastUpdatedAt = event.block.timestamp;
+    buyer.totalVolumeUSD = buyer.totalVolumeUSD.plus(
+      BigDecimal.fromString(event.params.baseValue.toString()).div(
+        BigDecimal.fromString("100000000")
+      )
+    );
+    buyer.save();
+  }
+
+  let protocol = ProtocolMetrics.load("protocol");
+  if (protocol != null) {
+    protocol.partialOrdersUSD = protocol.partialOrdersUSD.plus(
+      BigDecimal.fromString(event.params.baseValue.toString()).div(
+        BigDecimal.fromString("100000000")
+      )
+    );
+    protocol.save();
   }
 }

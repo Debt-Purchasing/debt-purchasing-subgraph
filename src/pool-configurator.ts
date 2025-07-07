@@ -1,10 +1,4 @@
-import {
-  BigInt,
-  BigDecimal,
-  Address,
-  Bytes,
-  log,
-} from "@graphprotocol/graph-ts";
+import { BigInt, BigDecimal, Address, Bytes } from "@graphprotocol/graph-ts";
 import {
   ReserveInitialized as ReserveInitializedEvent,
   CollateralConfigurationChanged as CollateralConfigurationChangedEvent,
@@ -27,7 +21,7 @@ import {
   AssetConfiguration,
   AssetConfigurationHistory,
 } from "../generated/schema";
-import { getTokenSymbol, getOrCreateToken } from "./helpers";
+import { getTokenSymbol } from "./helpers";
 
 // Helper function to get or create AssetConfiguration
 function getOrCreateAssetConfiguration(
@@ -116,11 +110,6 @@ export function handleReserveInitialized(event: ReserveInitializedEvent): void {
     event.logIndex
   );
   history.save();
-
-  log.info("Reserve initialized: {} ({})", [
-    config.symbol,
-    assetAddress.toHexString(),
-  ]);
 }
 
 export function handleCollateralConfigurationChanged(
@@ -158,15 +147,6 @@ export function handleCollateralConfigurationChanged(
   history.liquidationThreshold = config.liquidationThreshold;
   history.liquidationBonus = config.liquidationBonus;
   history.save();
-
-  log.info(
-    "Collateral config updated for {}: LTV={}, LT={} → Token.liquidationThreshold synced",
-    [
-      config.symbol,
-      config.ltv.toString(),
-      config.liquidationThreshold.toString(),
-    ]
-  );
 }
 
 export function handleReserveBorrowing(event: ReserveBorrowingEvent): void {
@@ -190,11 +170,6 @@ export function handleReserveBorrowing(event: ReserveBorrowingEvent): void {
   );
   history.borrowingEnabled = event.params.enabled;
   history.save();
-
-  log.info("Borrowing {} for {}", [
-    event.params.enabled ? "enabled" : "disabled",
-    config.symbol,
-  ]);
 }
 
 export function handleReserveStableRateBorrowing(
@@ -220,11 +195,6 @@ export function handleReserveStableRateBorrowing(
   );
   history.stableRateBorrowingEnabled = event.params.enabled;
   history.save();
-
-  log.info("Stable rate borrowing {} for {}", [
-    event.params.enabled ? "enabled" : "disabled",
-    config.symbol,
-  ]);
 }
 
 export function handleReserveFlashLoaning(
@@ -250,11 +220,6 @@ export function handleReserveFlashLoaning(
   );
   history.flashLoanEnabled = event.params.enabled;
   history.save();
-
-  log.info("Flash loans {} for {}", [
-    event.params.enabled ? "enabled" : "disabled",
-    config.symbol,
-  ]);
 }
 
 export function handleReserveActive(event: ReserveActiveEvent): void {
@@ -278,11 +243,6 @@ export function handleReserveActive(event: ReserveActiveEvent): void {
   );
   history.isActive = event.params.active;
   history.save();
-
-  log.info("Reserve {} for {}", [
-    event.params.active ? "activated" : "deactivated",
-    config.symbol,
-  ]);
 }
 
 export function handleReserveFrozen(event: ReserveFrozenEvent): void {
@@ -306,11 +266,6 @@ export function handleReserveFrozen(event: ReserveFrozenEvent): void {
   );
   history.isFrozen = event.params.frozen;
   history.save();
-
-  log.info("Reserve {} for {}", [
-    event.params.frozen ? "frozen" : "unfrozen",
-    config.symbol,
-  ]);
 }
 
 export function handleReservePaused(event: ReservePausedEvent): void {
@@ -334,11 +289,6 @@ export function handleReservePaused(event: ReservePausedEvent): void {
   );
   history.isPaused = event.params.paused;
   history.save();
-
-  log.info("Reserve {} for {}", [
-    event.params.paused ? "paused" : "unpaused",
-    config.symbol,
-  ]);
 }
 
 export function handleBorrowCapChanged(event: BorrowCapChangedEvent): void {
@@ -362,12 +312,6 @@ export function handleBorrowCapChanged(event: BorrowCapChangedEvent): void {
   );
   history.borrowCap = event.params.newBorrowCap;
   history.save();
-
-  log.info("Borrow cap changed for {}: {} -> {}", [
-    config.symbol,
-    event.params.oldBorrowCap.toString(),
-    event.params.newBorrowCap.toString(),
-  ]);
 }
 
 export function handleSupplyCapChanged(event: SupplyCapChangedEvent): void {
@@ -391,12 +335,6 @@ export function handleSupplyCapChanged(event: SupplyCapChangedEvent): void {
   );
   history.supplyCap = event.params.newSupplyCap;
   history.save();
-
-  log.info("Supply cap changed for {}: {} -> {}", [
-    config.symbol,
-    event.params.oldSupplyCap.toString(),
-    event.params.newSupplyCap.toString(),
-  ]);
 }
 
 export function handleReserveFactorChanged(
@@ -422,12 +360,6 @@ export function handleReserveFactorChanged(
   );
   history.reserveFactor = event.params.newReserveFactor;
   history.save();
-
-  log.info("Reserve factor changed for {}: {} -> {}", [
-    config.symbol,
-    event.params.oldReserveFactor.toString(),
-    event.params.newReserveFactor.toString(),
-  ]);
 }
 
 export function handleLiquidationProtocolFeeChanged(
@@ -452,12 +384,6 @@ export function handleLiquidationProtocolFeeChanged(
     event.logIndex
   );
   history.save();
-
-  log.info("Liquidation protocol fee changed for {}: {} -> {}", [
-    config.symbol,
-    event.params.oldFee.toString(),
-    event.params.newFee.toString(),
-  ]);
 }
 
 export function handleUnbackedMintCapChanged(
@@ -482,12 +408,6 @@ export function handleUnbackedMintCapChanged(
     event.logIndex
   );
   history.save();
-
-  log.info("Unbacked mint cap changed for {}: {} -> {}", [
-    config.symbol,
-    event.params.oldUnbackedMintCap.toString(),
-    event.params.newUnbackedMintCap.toString(),
-  ]);
 }
 
 export function handleEModeAssetCategoryChanged(
@@ -512,12 +432,6 @@ export function handleEModeAssetCategoryChanged(
     event.logIndex
   );
   history.save();
-
-  log.info("eMode category changed for {}: {} -> {}", [
-    config.symbol,
-    event.params.oldCategoryId.toString(),
-    event.params.newCategoryId.toString(),
-  ]);
 }
 
 export function handleBorrowableInIsolationChanged(
@@ -542,11 +456,6 @@ export function handleBorrowableInIsolationChanged(
     event.logIndex
   );
   history.save();
-
-  log.info("Borrowable in isolation {} for {}", [
-    event.params.borrowable ? "enabled" : "disabled",
-    config.symbol,
-  ]);
 }
 
 export function handleDebtCeilingChanged(event: DebtCeilingChangedEvent): void {
@@ -569,10 +478,4 @@ export function handleDebtCeilingChanged(event: DebtCeilingChangedEvent): void {
     event.logIndex
   );
   history.save();
-
-  log.info("Debt ceiling changed for {}: {} -> {}", [
-    config.symbol,
-    event.params.oldDebtCeiling.toString(),
-    event.params.newDebtCeiling.toString(),
-  ]);
 }

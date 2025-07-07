@@ -1,29 +1,47 @@
+type ProtocolMetrics @entity {
+  id: ID! # "protocol"
+  totalPositions: BigInt!
+  totalUsers: BigInt!
+  fullOrdersUSD: BigDecimal!
+  partialOrdersUSD: BigDecimal!
+  collaterals: [ProtocolCollateral!]! @derivedFrom(field: "protocol")
+  debts: [ProtocolDebt!]! @derivedFrom(field: "protocol")
+  lastUpdatedAt: BigInt!
+}
+
+type ProtocolCollateral @entity {
+  id: ID! # "protocol-collateral"
+  protocol: ProtocolMetrics!
+  token: Token!
+  amount: BigDecimal!
+  lastUpdatedAt: BigInt!
+}
+
+type ProtocolDebt @entity {
+  id: ID! # "protocol-debt"
+  protocol: ProtocolMetrics!
+  token: Token!
+  amount: BigDecimal!
+  lastUpdatedAt: BigInt!
+}
+
 type User @entity {
   id: ID! # User address
-  totalPositions: BigInt! # Number of debt positions created
-  # totalOrdersCreated: BigInt! # Orders created as seller - Orders are off-chain
-  totalOrdersExecuted: BigInt! # Orders executed as buyer
-  totalVolumeTraded: BigDecimal! # Total volume in USD
-  positions: [DebtPosition!]! @derivedFrom(field: "owner")
-  # sellOrders: [Order!]! @derivedFrom(field: "seller") - Orders are off-chain
-  # Split execution tracking
-  fullSaleBuys: [FullSaleOrderExecution!]! @derivedFrom(field: "buyer")
-  fullSaleSells: [FullSaleOrderExecution!]! @derivedFrom(field: "seller")
-  partialOrderBuys: [PartialOrderExecution!]! @derivedFrom(field: "buyer")
-  partialOrderSells: [PartialOrderExecution!]! @derivedFrom(field: "seller")
+  nonce: BigInt! # Current nonce
+  totalPositions: BigInt!
+  totalOrdersExecuted: BigInt!
+  totalVolumeUSD: BigDecimal!
+  lastUpdatedAt: BigInt! # Last update timestamp
 }
 
 type DebtPosition @entity {
   id: ID! # Debt contract address
-  owner: User! # Current owner
+  owner: Bytes! # Current owner
   nonce: BigInt! # Current nonce
   # Collateral tracking (detailed breakdown)
   collaterals: [PositionCollateral!]! @derivedFrom(field: "position")
   # Debt tracking (detailed breakdown)
   debts: [PositionDebt!]! @derivedFrom(field: "position")
-  # Split execution history tracking
-  fullSaleExecutions: [FullSaleOrderExecution!]! @derivedFrom(field: "position")
-  partialExecutions: [PartialOrderExecution!]! @derivedFrom(field: "position")
 
   # Timestamps
   createdAt: BigInt!
@@ -49,30 +67,30 @@ type PositionDebt @entity {
 
 # Order entity removed - orders are created off-chain with signatures
 
-type FullSaleOrderExecution @entity {
+type FullOrderExecution @entity {
   id: ID! # Transaction hash
-  position: DebtPosition! # Position involved
-  buyer: User! # Order executor (new owner)
-  seller: User! # Previous owner
-  debtNonce: BigInt! # Debt nonce from event
-  gasUsed: BigInt! # Gas consumed
-  gasPriceGwei: BigDecimal! # Gas price in Gwei
+  titleHash: Bytes! # Title hash
+  buyer: Bytes! # Order executor
+  usdValue: BigDecimal! # Base value of the order
   # Performance metrics
-  executionTime: BigInt! # Block timestamp
+  blockTimestamp: BigInt! # Block timestamp
   blockNumber: BigInt! # Block number
 }
 
 type PartialOrderExecution @entity {
   id: ID! # Transaction hash
-  position: DebtPosition! # Position involved
-  buyer: User! # Order executor
-  seller: User! # Position owner (unchanged)
-  debtNonce: BigInt! # Debt nonce from event
-  gasUsed: BigInt! # Gas consumed
-  gasPriceGwei: BigDecimal! # Gas price in Gwei
+  titleHash: Bytes! # Title hash
+  buyer: Bytes! # Order executor
+  usdValue: BigDecimal! # Base value of the order
   # Performance metrics
-  executionTime: BigInt! # Block timestamp
+  blockTimestamp: BigInt! # Block timestamp
   blockNumber: BigInt! # Block number
+}
+
+type CancelledOrder @entity {
+  id: ID! # Title hash
+  titleHash: Bytes! # Title hash
+  cancelledAt: BigInt! # Block timestamp
 }
 
 # Consolidated Token entity combining TokenPrice and Token functionality
@@ -94,27 +112,6 @@ type PriceSnapshot @entity {
   priceUSD: BigDecimal! # Price at snapshot
   timestamp: BigInt! # Snapshot time
   blockNumber: BigInt! # Block number
-}
-
-# Transaction tracking
-type Transaction @entity {
-  id: ID! # Transaction hash
-  blockNumber: BigInt!
-  timestamp: BigInt!
-  gasUsed: BigInt!
-  gasPrice: BigDecimal!
-  from: Bytes!
-  to: Bytes!
-}
-
-# Protocol metrics
-type ProtocolMetrics @entity {
-  id: ID! # "protocol"
-  totalPositions: BigInt!
-  # totalActiveOrders: BigInt! - Orders are off-chain
-  totalVolumeUSD: BigDecimal!
-  totalUsers: BigInt!
-  lastUpdatedAt: BigInt!
 }
 
 # Asset to Oracle mapping for dynamic price tracking

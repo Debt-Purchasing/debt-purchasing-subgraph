@@ -6,7 +6,7 @@ dataSources:
     name: AaveRouter
     network: sepolia
     source:
-      address: "0xf73e3938462b560B56C4cD4D59E6C2C3686355F1" # Updated AaveRouter Sepolia
+      address: "0x7E9dB2C6CB9900036DDA8780e44A0103dD73bB4a" # Updated AaveRouter Sepolia
       abi: AaveRouter
       startBlock: 8453751 # Aave deployment block on Sepolia
     mapping:
@@ -14,28 +14,30 @@ dataSources:
       apiVersion: 0.0.7
       language: wasm/assemblyscript
       entities:
-        - DebtPosition
         - User
-        - Transaction
+        - DebtPosition
         - ProtocolMetrics
-        - FullSaleOrderExecution
+        - FullOrderExecution
         - PartialOrderExecution
+        - CancelledOrder
       abis:
         - name: AaveRouter
           file: ./abis/AaveRouter.json
         - name: AaveOracle
           file: ./abis/AaveOracle.json
       eventHandlers:
-        - event: CreateDebt(indexed address,indexed address)
+        - event: CreateDebt(indexed address,indexed address,uint256)
           handler: handleCreateDebt
         - event: TransferDebtOwnership(indexed address,indexed address)
           handler: handleTransferDebtOwnership
         - event: CancelCurrentDebtOrders(indexed address)
           handler: handleCancelCurrentDebtOrders
-        - event: ExecuteFullSaleOrder(indexed address,uint256,address)
+        - event: ExecuteFullSaleOrder(indexed bytes32,indexed address,uint256,address,address,uint256)
           handler: handleExecuteFullSaleOrder
-        - event: ExecutePartialSellOrder(indexed address,uint256,address)
+        - event: ExecutePartialSellOrder(indexed bytes32,indexed address,uint256,address,address,uint256)
           handler: handleExecutePartialSellOrder
+        - event: CancelOrder(indexed bytes32)
+          handler: handleCancelOrder
       file: ./src/aave-router.ts
   # Aave Pool contract for lending events
   - kind: ethereum
@@ -149,270 +151,6 @@ dataSources:
         - event: DebtCeilingChanged(indexed address,uint256,uint256)
           handler: handleDebtCeilingChanged
       file: ./src/pool-configurator.ts
-  # WETH Oracle
-  - kind: ethereum
-    name: WETHOracle
-    network: sepolia
-    source:
-      address: "0x4d5f545400937997a594eb9f5b052381430e38d5"
-      abi: ChainlinkAggregator
-      startBlock: 8453751
-    mapping:
-      kind: ethereum/events
-      apiVersion: 0.0.7
-      language: wasm/assemblyscript
-      entities:
-        - TokenPrice
-        - PriceSnapshot
-      abis:
-        - name: ChainlinkAggregator
-          file: ./abis/ChainlinkAggregator.json
-      eventHandlers:
-        - event: AnswerUpdated(indexed int256,indexed uint256,uint256)
-          handler: handlePriceUpdated
-      file: ./src/chainlink-oracle.ts
-  # wstETH Oracle
-  - kind: ethereum
-    name: wstETHOracle
-    network: sepolia
-    source:
-      address: "0xff7997e167b9d8709fe2a764672c075be1d734ec"
-      abi: ChainlinkAggregator
-      startBlock: 8453751
-    mapping:
-      kind: ethereum/events
-      apiVersion: 0.0.7
-      language: wasm/assemblyscript
-      entities:
-        - TokenPrice
-        - PriceSnapshot
-      abis:
-        - name: ChainlinkAggregator
-          file: ./abis/ChainlinkAggregator.json
-      eventHandlers:
-        - event: AnswerUpdated(indexed int256,indexed uint256,uint256)
-          handler: handlePriceUpdated
-      file: ./src/chainlink-oracle.ts
-  # WBTC Oracle
-  - kind: ethereum
-    name: WBTCOracle
-    network: sepolia
-    source:
-      address: "0xcf3bc3dae51092f2a0bc3ca119bc761e73166cda"
-      abi: ChainlinkAggregator
-      startBlock: 8453751
-    mapping:
-      kind: ethereum/events
-      apiVersion: 0.0.7
-      language: wasm/assemblyscript
-      entities:
-        - TokenPrice
-        - PriceSnapshot
-      abis:
-        - name: ChainlinkAggregator
-          file: ./abis/ChainlinkAggregator.json
-      eventHandlers:
-        - event: AnswerUpdated(indexed int256,indexed uint256,uint256)
-          handler: handlePriceUpdated
-      file: ./src/chainlink-oracle.ts
-  # USDC Oracle
-  - kind: ethereum
-    name: USDCOracle
-    network: sepolia
-    source:
-      address: "0x7d4b1defb01610bcc0f7088649ed53bb7bfd9aa2"
-      abi: ChainlinkAggregator
-      startBlock: 8453751
-    mapping:
-      kind: ethereum/events
-      apiVersion: 0.0.7
-      language: wasm/assemblyscript
-      entities:
-        - TokenPrice
-        - PriceSnapshot
-      abis:
-        - name: ChainlinkAggregator
-          file: ./abis/ChainlinkAggregator.json
-      eventHandlers:
-        - event: AnswerUpdated(indexed int256,indexed uint256,uint256)
-          handler: handlePriceUpdated
-      file: ./src/chainlink-oracle.ts
-  # DAI Oracle
-  - kind: ethereum
-    name: DAIOracle
-    network: sepolia
-    source:
-      address: "0x6b02ded5e53730a3d046831068df843634fc3be3"
-      abi: ChainlinkAggregator
-      startBlock: 8453751
-    mapping:
-      kind: ethereum/events
-      apiVersion: 0.0.7
-      language: wasm/assemblyscript
-      entities:
-        - TokenPrice
-        - PriceSnapshot
-      abis:
-        - name: ChainlinkAggregator
-          file: ./abis/ChainlinkAggregator.json
-      eventHandlers:
-        - event: AnswerUpdated(indexed int256,indexed uint256,uint256)
-          handler: handlePriceUpdated
-      file: ./src/chainlink-oracle.ts
-  # LINK Oracle
-  - kind: ethereum
-    name: LINKOracle
-    network: sepolia
-    source:
-      address: "0xbf3575382f32c37b268113b1f4b30a9bc8e9cbec"
-      abi: ChainlinkAggregator
-      startBlock: 8453751
-    mapping:
-      kind: ethereum/events
-      apiVersion: 0.0.7
-      language: wasm/assemblyscript
-      entities:
-        - TokenPrice
-        - PriceSnapshot
-      abis:
-        - name: ChainlinkAggregator
-          file: ./abis/ChainlinkAggregator.json
-      eventHandlers:
-        - event: AnswerUpdated(indexed int256,indexed uint256,uint256)
-          handler: handlePriceUpdated
-      file: ./src/chainlink-oracle.ts
-  # AAVE Oracle
-  - kind: ethereum
-    name: AAVEOracle
-    network: sepolia
-    source:
-      address: "0xfadcad80259cb08eb9db330b4e9b28d17fc97960"
-      abi: ChainlinkAggregator
-      startBlock: 8453751
-    mapping:
-      kind: ethereum/events
-      apiVersion: 0.0.7
-      language: wasm/assemblyscript
-      entities:
-        - TokenPrice
-        - PriceSnapshot
-      abis:
-        - name: ChainlinkAggregator
-          file: ./abis/ChainlinkAggregator.json
-      eventHandlers:
-        - event: AnswerUpdated(indexed int256,indexed uint256,uint256)
-          handler: handlePriceUpdated
-      file: ./src/chainlink-oracle.ts
-  # cbETH Oracle
-  - kind: ethereum
-    name: cbETHOracle
-    network: sepolia
-    source:
-      address: "0xcd6cda9fdf5170c94ad8a8faad4c9955f523a020"
-      abi: ChainlinkAggregator
-      startBlock: 8453751
-    mapping:
-      kind: ethereum/events
-      apiVersion: 0.0.7
-      language: wasm/assemblyscript
-      entities:
-        - TokenPrice
-        - PriceSnapshot
-      abis:
-        - name: ChainlinkAggregator
-          file: ./abis/ChainlinkAggregator.json
-      eventHandlers:
-        - event: AnswerUpdated(indexed int256,indexed uint256,uint256)
-          handler: handlePriceUpdated
-      file: ./src/chainlink-oracle.ts
-  # USDT Oracle
-  - kind: ethereum
-    name: USDTOracle
-    network: sepolia
-    source:
-      address: "0xcf09ddcb2328446983058f41fdf75be8cc656e5d"
-      abi: ChainlinkAggregator
-      startBlock: 8453751
-    mapping:
-      kind: ethereum/events
-      apiVersion: 0.0.7
-      language: wasm/assemblyscript
-      entities:
-        - TokenPrice
-        - PriceSnapshot
-      abis:
-        - name: ChainlinkAggregator
-          file: ./abis/ChainlinkAggregator.json
-      eventHandlers:
-        - event: AnswerUpdated(indexed int256,indexed uint256,uint256)
-          handler: handlePriceUpdated
-      file: ./src/chainlink-oracle.ts
-  # rETH Oracle
-  - kind: ethereum
-    name: rETHOracle
-    network: sepolia
-    source:
-      address: "0x1fb2ad8b17996a4b8a87e1d8d599c95c6b9b918a"
-      abi: ChainlinkAggregator
-      startBlock: 8453751
-    mapping:
-      kind: ethereum/events
-      apiVersion: 0.0.7
-      language: wasm/assemblyscript
-      entities:
-        - TokenPrice
-        - PriceSnapshot
-      abis:
-        - name: ChainlinkAggregator
-          file: ./abis/ChainlinkAggregator.json
-      eventHandlers:
-        - event: AnswerUpdated(indexed int256,indexed uint256,uint256)
-          handler: handlePriceUpdated
-      file: ./src/chainlink-oracle.ts
-  # LUSD Oracle
-  - kind: ethereum
-    name: LUSDOracle
-    network: sepolia
-    source:
-      address: "0xd5a1668be77ce93c5bd82e2f82dad5b529cb2c13"
-      abi: ChainlinkAggregator
-      startBlock: 8453751
-    mapping:
-      kind: ethereum/events
-      apiVersion: 0.0.7
-      language: wasm/assemblyscript
-      entities:
-        - TokenPrice
-        - PriceSnapshot
-      abis:
-        - name: ChainlinkAggregator
-          file: ./abis/ChainlinkAggregator.json
-      eventHandlers:
-        - event: AnswerUpdated(indexed int256,indexed uint256,uint256)
-          handler: handlePriceUpdated
-      file: ./src/chainlink-oracle.ts
-  # CRV Oracle
-  - kind: ethereum
-    name: CRVOracle
-    network: sepolia
-    source:
-      address: "0x251936fc84a0e1e585c3cbe74234a987c3c3c18e"
-      abi: ChainlinkAggregator
-      startBlock: 8453751
-    mapping:
-      kind: ethereum/events
-      apiVersion: 0.0.7
-      language: wasm/assemblyscript
-      entities:
-        - TokenPrice
-        - PriceSnapshot
-      abis:
-        - name: ChainlinkAggregator
-          file: ./abis/ChainlinkAggregator.json
-      eventHandlers:
-        - event: AnswerUpdated(indexed int256,indexed uint256,uint256)
-          handler: handlePriceUpdated
-      file: ./src/chainlink-oracle.ts
 templates:
   # Template for individual oracle tracking
   - kind: ethereum/contract

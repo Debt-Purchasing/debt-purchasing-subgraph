@@ -6,7 +6,10 @@
   "scripts": {
     "codegen": "graph codegen",
     "build": "graph build",
-    "deploy": "graph deploy",
+    "auth": "graph auth --studio",
+    "deploy:studio": "graph deploy --studio debt-purchasing-protocol",
+    "deploy:studio:sepolia": "graph deploy --studio debt-purchasing-protocol-sepolia",
+    "create:studio": "graph create --studio debt-purchasing-protocol",
     "deploy-local": "graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 debt-purchasing-subgraph",
     "create-local": "graph create --node http://localhost:8020/ debt-purchasing-subgraph",
     "remove-local": "graph remove --node http://localhost:8020/ debt-purchasing-subgraph",
